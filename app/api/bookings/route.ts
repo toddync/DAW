@@ -1,107 +1,46 @@
-import { createClient } from '@/lib/supabase-server'
-import { NextRequest, NextResponse } from 'next/server'
+// app/api/bookings/route.ts
+import { createClient } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createReserva } from '@/lib/services/reservasService';
 
+/**
+ * API endpoint para criar uma nova reserva.
+ * Delega a lógica de negócio para a camada de serviço.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json()
-    const { bedId, startDate, endDate } = body
+    const body = await request.json();
+    const { vagas, valorTotal } = body;
 
-    // Validate inputs
-    if (!bedId || !startDate || !endDate) {
+    // Validação básica dos inputs
+    if (!Array.isArray(vagas) || vagas.length === 0 || !valorTotal) {
       return NextResponse.json(
-        { error: 'Missing required fields: bedId, startDate, endDate' },
+        { error: 'Campos obrigatórios ausentes: vagas e valorTotal' },
         { status: 400 }
-      )
+      );
     }
 
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
+    // Chama o serviço para criar a reserva de forma atômica
+    const reservaId = await createReserva(user.id, vagas, valorTotal);
 
-    // Validate date range
-    if (start >= end) {
-      return NextResponse.json(
-        { error: 'Start date must be before end date' },
-        { status: 400 }
-      )
-    }
+    return NextResponse.json({ reserva_id: reservaId, message: 'Reserva criada com sucesso!' }, { status: 201 });
 
-    if (start < now) {
-      return NextResponse.json(
-        { error: 'Cannot book dates in the past' },
-        { status: 400 }
-      )
-    }
-
-    // Check availability
-    const { data: conflicts, error: conflictError } = await supabase
-      .from('bookings')
-      .select('id')
-      .eq('bed_id', bedId)
-      .not('end_date', 'lte', startDate)
-      .not('start_date', 'gte', endDate)
-      .limit(1)
-
-    if (conflictError) throw conflictError
-
-    if (conflicts.length > 0) {
-      return NextResponse.json(
-        { error: 'Bed is not available for the selected dates' },
-        { status: 409 }
-      )
-    }
-
-    // Create booking
-    const { data: booking, error: bookingError } = await supabase
-      .from('bookings')
-      .insert({
-        bed_id: bedId,
-        start_date: startDate,
-        end_date: endDate,
-        user_id: user.id,
-      })
-      .select()
-      .single()
-
-    if (bookingError) throw bookingError
-
-    return NextResponse.json(booking, { status: 201 })
   } catch (error) {
-    console.error('Error creating booking:', error)
-    return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 })
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams
-    const bedId = searchParams.get('bedId')
-
-    const supabase = await createClient()
-
-    let query = supabase.from('bookings').select('*').order('start_date', { ascending: true })
-
-    if (bedId) {
-      query = query.eq('bed_id', bedId)
-    }
-
-    const { data: bookings, error } = await query
-
-    if (error) throw error
-
-    return NextResponse.json(bookings)
-  } catch (error) {
-    console.error('Error fetching bookings:', error)
-    return NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error(`API Error in POST /api/bookings: ${errorMessage}`);
+    return NextResponse.json(
+      { 
+        error: 'Falha ao criar a reserva.',
+        details: errorMessage 
+      }, 
+      { status: 500 }
+    );
   }
 }

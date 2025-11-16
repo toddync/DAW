@@ -2,19 +2,37 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CartSidebar } from './cart-sidebar'
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import { User } from '@supabase/supabase-js'
+import { User as SupabaseUser } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { User as UserIcon, LogOut, LayoutDashboard, ShoppingCart } from 'lucide-react'
+import { Skeleton } from './ui/skeleton'
+
+const CartSidebar = dynamic(() => import('./cart-sidebar').then(mod => mod.CartSidebar), {
+  ssr: false,
+  loading: () => (
+    <Button variant="outline" size="icon" className="relative" disabled>
+      <ShoppingCart className="h-5 w-5" />
+    </Button>
+  ),
+})
 
 export function Header() {
   const pathname = usePathname()
   const router = useRouter()
-  const isHome = pathname === '/'
   const isBooking = pathname === '/booking'
-  const isReservations = pathname === '/reservations'
-  const [user, setUser] = useState<User | null>(null)
+  
+  const [user, setUser] = useState<SupabaseUser | null>(null)
   const supabase = getSupabaseClient()
 
   useEffect(() => {
@@ -36,6 +54,7 @@ export function Header() {
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/')
+    router.refresh() // Garante que o estado do servidor seja limpo
   }
 
   return (
@@ -48,45 +67,59 @@ export function Header() {
           <span className="font-bold text-lg text-foreground">Urban Hostel</span>
         </Link>
 
-        <nav className="flex items-center gap-6">
-          <Link
-            href="/"
-            className={`text-sm font-medium transition-colors ${isHome ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            Home
-          </Link>
+        <nav className="flex items-center gap-4 md:gap-6">
           <Link
             href="/booking"
             className={`text-sm font-medium transition-colors ${isBooking ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            Rooms
+            Quartos
           </Link>
-          {user && (
-            <Link
-              href="/reservations"
-              className={`text-sm font-medium transition-colors ${isReservations ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              My Reservations
-            </Link>
-          )}
+          
           <CartSidebar />
+
           {user ? (
-            <Button onClick={handleSignOut} variant="outline" size="sm">
-              Sign Out
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-full">
+                  <UserIcon className="h-5 w-5" />
+                  <span className="sr-only">Toggle user menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/reservations">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <span>Minhas Reservas</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/account/profile">
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    <span>Perfil</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sair</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
-            <>
+            <div className="flex items-center gap-2">
               <Link href="/login">
                 <Button variant="outline" size="sm">
-                  Sign In
+                  Entrar
                 </Button>
               </Link>
               <Link href="/signup">
                 <Button size="sm">
-                  Sign Up
+                  Cadastrar
                 </Button>
               </Link>
-            </>
+            </div>
           )}
         </nav>
       </div>

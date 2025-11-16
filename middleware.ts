@@ -1,12 +1,13 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Função para criar uma resposta para o middleware
+const createResponse = (request: NextRequest) => NextResponse.next({
+  request: { headers: request.headers },
+});
+
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  let response = createResponse(request);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,68 +18,55 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+          response.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
+          response.cookies.set({ name, value: '', ...options });
         },
       },
     }
-  )
+  );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
+  const { pathname } = request.nextUrl;
 
-  if (user) {
+  // Proteger rotas de admin
+  if (pathname.startsWith('/admin')) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login?message=Authentication required', request.url));
+    }
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('usuarios')
       .select('role')
       .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin' && request.nextUrl.pathname.startsWith('/admin')) {
-      return NextResponse.redirect(new URL('/', request.url))
+      .single();
+    
+    if (profile?.role !== 'admin') {
+      return NextResponse.redirect(new URL('/', request.url));
     }
-
-    if (profile?.role === 'admin' && request.nextUrl.pathname.startsWith('/login')) {
-      return NextResponse.redirect(new URL('/admin', request.url))
-    }
-  } else if (request.nextUrl.pathname.startsWith('/admin')) {
-    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  return response
+  // Lógica de Onboarding para novos usuários
+  if (user && !pathname.startsWith('/account/onboarding') && !pathname.startsWith('/login')) {
+    const { data: profile } = await supabase
+      .from('usuarios')
+      .select('nome')
+      .eq('id', user.id)
+      .single();
+
+    // Se o perfil não tiver nome, redireciona para o onboarding
+    if (profile && (profile.nome === null || profile.nome === '')) {
+      return NextResponse.redirect(new URL('/account/onboarding', request.url));
+    }
+  }
+
+  return response;
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/login'],
+  // Executa o middleware em todas as rotas, exceto as de API, arquivos estáticos, e imagens.
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
 }

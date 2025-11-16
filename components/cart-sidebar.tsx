@@ -23,22 +23,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import { PaymentModal } from './payment-modal'
-import { Bed } from '@/lib/types'
 import Link from 'next/link'
+import { format, parseISO } from 'date-fns'
 
 export function CartSidebar() {
   const { cart, fetchCart, removeCartItem, clearCart, clearCartFromStore } = useBookingStore()
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [
-    selectedItem,
-    setSelectedItem,
-  ] = useState<{
-    bed: Bed
-    dateRange: { start: string | null; end: string | null }
-    totalPrice: number
-  } | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const router = useRouter()
   const supabase = getSupabaseClient()
@@ -70,8 +59,8 @@ export function CartSidebar() {
   }, [supabase, fetchCart])
 
   const calculateNights = (start: string, end: string) => {
-    const startDate = new Date(start)
-    const endDate = new Date(end)
+    const startDate = parseISO(start)
+    const endDate = parseISO(end)
     return Math.ceil(
       (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
     )
@@ -79,160 +68,130 @@ export function CartSidebar() {
 
   const totalItems = cart.length
   const cartTotal = cart.reduce((total, item) => {
-    if (item.dateRange.start && item.dateRange.end) {
-      const nights = calculateNights(item.dateRange.start, item.dateRange.end)
-      return total + nights * item.bed.price_per_night
+    if (item.data_inicio && item.data_fim) {
+      const nights = calculateNights(item.data_inicio, item.data_fim)
+      const pricePerNight = item.vaga.quarto.preco_base / item.vaga.quarto.capacidade
+      return total + nights * pricePerNight
     }
     return total
   }, 0)
 
   const handleCheckout = () => {
     if (!user) {
-      router.push('/login')
+      router.push('/login?redirect=/checkout')
       return
     }
-
-    if (cart.length > 0) {
-      const firstItem = cart[0]
-      if (firstItem.dateRange.start && firstItem.dateRange.end) {
-        const nights = calculateNights(
-          firstItem.dateRange.start,
-          firstItem.dateRange.end
-        )
-        setSelectedItem({
-          bed: firstItem.bed,
-          dateRange: firstItem.dateRange,
-          totalPrice: nights * firstItem.bed.price_per_night,
-        })
-        setShowPaymentModal(true)
-      }
-    }
+    router.push('/checkout')
   }
 
   return (
-    <>
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button variant="outline" size="icon" className="relative">
-            <ShoppingCart className="h-5 w-5" />
-            {totalItems > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full h-5 w-5 text-xs flex items-center justify-center">
-                {totalItems}
-              </span>
-            )}
-          </Button>
-        </SheetTrigger>
-        <SheetContent className="flex flex-col">
-          <SheetHeader>
-            <SheetTitle>Your Cart ({totalItems})</SheetTitle>
-          </SheetHeader>
-          {cart.length > 0 ? (
-            <>
-              <ScrollArea className="flex-grow -mr-6 pr-6">
-                <div className="space-y-4">
-                  {cart.map((item) => {
-                    const nights =
-                      item.dateRange.start && item.dateRange.end
-                        ? calculateNights(
-                            item.dateRange.start,
-                            item.dateRange.end
-                          )
-                        : 0
-                    const itemTotal = nights * item.bed.price_per_night
-                    return (
-                      <Card key={item.bed.id} className="bg-muted/50">
-                        <CardHeader>
-                          <CardTitle className="text-base">
-                            {item.bed.label}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-sm space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Dates:</span>
-                            <span>
-                              {item.dateRange.start} - {item.dateRange.end}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">
-                              Price:
-                            </span>
-                            <span>
-                              {nights} night{nights > 1 ? 's' : ''} at $
-                              {item.bed.price_per_night.toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between font-medium">
-                            <span className="text-foreground">Item Total:</span>
-                            <span>${itemTotal.toFixed(2)}</span>
-                          </div>
-                        </CardContent>
-                        <CardFooter>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-destructive hover:text-destructive w-full"
-                            onClick={() => removeCartItem(item.cart_item_id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Remove
-                          </Button>
-                        </CardFooter>
-                      </Card>
-                    )
-                  })}
-                </div>
-              </ScrollArea>
-              <SheetFooter className="mt-auto border-t pt-4 space-y-4">
-                <div className="flex justify-between font-semibold text-lg">
-                  <span>Total</span>
-                  <span>${cartTotal.toFixed(2)}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={async () => await clearCart()}
-                    className="w-full"
-                  >
-                    Clear Cart
-                  </Button>
-                  <Button onClick={handleCheckout} className="w-full">
-                    Checkout
-                  </Button>
-                </div>
-              </SheetFooter>
-            </>
-          ) : (
-            <div className="flex-grow flex flex-col items-center justify-center text-center space-y-4">
-              <ShoppingCart className="w-16 h-16 text-muted-foreground/50" />
-              <div>
-                <p className="text-lg font-semibold">Your cart is empty</p>
-                <p className="text-sm text-muted-foreground">
-                  Add some beds to get started.
-                </p>
-              </div>
-              <Link href="/booking">
-                <Button>Browse Rooms</Button>
-              </Link>
-            </div>
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="outline" size="icon" className="relative">
+          <ShoppingCart className="h-5 w-5" />
+          {totalItems > 0 && (
+            <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full h-5 w-5 text-xs flex items-center justify-center">
+              {totalItems}
+            </span>
           )}
-        </SheetContent>
-      </Sheet>
-      {selectedItem && (
-        <PaymentModal
-          isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          onPaymentSuccess={async () => {
-            setShowPaymentModal(false)
-            // In a real app, you'd create bookings for all cart items
-            // and then clear the cart.
-            await clearCart()
-          }}
-          totalPrice={selectedItem.totalPrice}
-          bed={selectedItem.bed}
-          dateRange={selectedItem.dateRange}
-        />
-      )}
-    </>
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="flex flex-col">
+        <SheetHeader>
+          <SheetTitle>Seu Carrinho ({totalItems})</SheetTitle>
+        </SheetHeader>
+        {cart.length > 0 ? (
+          <>
+            <ScrollArea className="flex-grow -mr-6 pr-6">
+              <div className="space-y-4">
+                {cart.map((item) => {
+                  const nights =
+                    item.data_inicio && item.data_fim
+                      ? calculateNights(
+                          item.data_inicio,
+                          item.data_fim
+                        )
+                      : 0
+                  const pricePerNight = item.vaga.quarto.preco_base / item.vaga.quarto.capacidade
+                  const itemTotal = nights * pricePerNight
+                  return (
+                    <Card key={item.id} className="bg-muted/50">
+                      <CardHeader>
+                        <CardTitle className="text-base capitalize">
+                          Quarto {item.vaga.quarto.numero} - Cama {item.vaga.tipo_cama}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="text-sm space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Datas:</span>
+                          <span>
+                            {format(parseISO(item.data_inicio), 'dd/MM')} - {format(parseISO(item.data_fim), 'dd/MM')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            Preço:
+                          </span>
+                          <span>
+                            {nights} noite{nights > 1 ? 's' : ''} x R$
+                            {pricePerNight.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between font-medium">
+                          <span className="text-foreground">Subtotal:</span>
+                          <span>R$ {itemTotal.toFixed(2)}</span>
+                        </div>
+                      </CardContent>
+                      <CardFooter>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive w-full"
+                          onClick={() => removeCartItem(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remover
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  )
+                })}
+              </div>
+            </ScrollArea>
+            <SheetFooter className="mt-auto border-t pt-4 space-y-4">
+              <div className="flex justify-between font-semibold text-lg">
+                <span>Total</span>
+                <span>R$ {cartTotal.toFixed(2)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  onClick={async () => await clearCart()}
+                  className="w-full"
+                >
+                  Limpar Carrinho
+                </Button>
+                <Button onClick={handleCheckout} className="w-full" disabled={cart.length === 0}>
+                  Finalizar Compra
+                </Button>
+              </div>
+            </SheetFooter>
+          </>
+        ) : (
+          <div className="flex-grow flex flex-col items-center justify-center text-center space-y-4">
+            <ShoppingCart className="w-16 h-16 text-muted-foreground/50" />
+            <div>
+              <p className="text-lg font-semibold">Seu carrinho está vazio</p>
+              <p className="text-sm text-muted-foreground">
+                Adicione algumas vagas para começar.
+              </p>
+            </div>
+            <Link href="/booking">
+              <Button>Ver Quartos</Button>
+            </Link>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   )
 }

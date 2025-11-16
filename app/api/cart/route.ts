@@ -1,95 +1,83 @@
-import { createClient } from '@/lib/supabase-server'
-import { NextRequest, NextResponse } from 'next/server'
+// app/api/cart/route.ts
+import { createClient } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getItensCarrinho, addItemCarrinho, removerItemCarrinho } from '@/lib/services/carrinhoService';
 
+/**
+ * API endpoint para buscar os itens do carrinho do usuário.
+ */
 export async function GET(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const { data: cartItems, error } = await supabase
-    .from('cart_items')
-    .select(`
-      id,
-      start_date,
-      end_date,
-      bed:beds (*)
-    `)
-    .eq('user_id', user.id)
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  const formattedCart = cartItems.map(item => ({
-    bed: item.bed,
-    dateRange: {
-      start: item.start_date,
-      end: item.end_date,
-    },
-    cart_item_id: item.id,
-  }))
-
-  return NextResponse.json(formattedCart)
-}
-
-export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const { bed_id, start_date, end_date } = await request.json()
-
-  if (!bed_id || !start_date || !end_date) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-  }
-
-  const { data, error } = await supabase
-    .from('cart_items')
-    .insert({
-      user_id: user.id,
-      bed_id,
-      start_date,
-      end_date,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json(data)
-}
-
-export async function DELETE(request: NextRequest) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { cart_item_id } = await request.json()
+    const itens = await getItensCarrinho(user.id);
+    return NextResponse.json(itens);
 
-    if (!cart_item_id) {
-        return NextResponse.json({ error: 'Missing cart_item_id' }, { status: 400 })
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error(`API Error in GET /api/cart: ${errorMessage}`);
+    return NextResponse.json({ error: 'Falha ao buscar itens do carrinho.', details: errorMessage }, { status: 500 });
+  }
+}
+
+/**
+ * API endpoint para adicionar um item ao carrinho.
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { error } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('id', cart_item_id)
-        .eq('user_id', user.id)
+    const body = await request.json();
+    const { vaga_id, data_inicio, data_fim } = body;
 
-    if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!vaga_id || !data_inicio || !data_fim) {
+      return NextResponse.json({ error: 'Campos obrigatórios ausentes' }, { status: 400 });
     }
 
-    return NextResponse.json({ message: 'Item removed from cart' })
+    const novoItem = await addItemCarrinho(user.id, { vaga_id, data_inicio, data_fim });
+    return NextResponse.json(novoItem, { status: 201 });
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error(`API Error in POST /api/cart: ${errorMessage}`);
+    return NextResponse.json({ error: 'Falha ao adicionar item ao carrinho.', details: errorMessage }, { status: 500 });
+  }
+}
+
+/**
+ * API endpoint para remover um item do carrinho.
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { itemId } = await request.json();
+
+    if (!itemId) {
+      return NextResponse.json({ error: 'ID do item é obrigatório' }, { status: 400 });
+    }
+
+    await removerItemCarrinho(user.id, itemId);
+    return NextResponse.json({ message: 'Item removido do carrinho com sucesso' });
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error(`API Error in DELETE /api/cart: ${errorMessage}`);
+    return NextResponse.json({ error: 'Falha ao remover item do carrinho.', details: errorMessage }, { status: 500 });
+  }
 }

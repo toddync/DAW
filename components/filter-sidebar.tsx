@@ -5,8 +5,20 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useBookingStore } from '@/lib/store'
 
-const BED_TYPES = ['single', 'couple', 'bunk']
-const COMMON_AMENITIES = ['wifi', 'air_conditioning', 'heating', 'minibar', 'safe', 'balcony']
+const BED_TYPES = [
+  { id: 'solteiro', label: 'Solteiro' },
+  { id: 'superior', label: 'Beliche Superior' },
+  { id: 'inferior', label: 'Beliche Inferior' },
+]
+
+const COMMON_AMENITIES = [
+    { id: 'WIFI_GRATIS', label: 'Wi-Fi Grátis' },
+    { id: 'AR_CONDICIONADO', label: 'Ar Condicionado' },
+    { id: 'BANHEIRO_PRIV', label: 'Banheiro Privativo' },
+    { id: 'QUARTO_FEMININO', label: 'Quarto Feminino' },
+    { id: 'ARMARIO_INDIVIDUAL', label: 'Armário Individual' },
+    { id: 'ACESSIBILIDADE', label: 'Acessibilidade' },
+]
 
 export function FilterSidebar() {
   const { filters, toggleBedType, toggleAmenity, clearFilters } = useBookingStore()
@@ -15,21 +27,21 @@ export function FilterSidebar() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Bed Type</CardTitle>
+          <CardTitle className="text-lg">Tipo de Cama</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {BED_TYPES.map((type) => (
-            <div key={type} className="flex items-center space-x-2">
+            <div key={type.id} className="flex items-center space-x-2">
               <Checkbox
-                id={`bed-${type}`}
-                checked={filters.bedTypes.has(type)}
-                onCheckedChange={() => toggleBedType(type)}
+                id={`bed-${type.id}`}
+                checked={filters.bedTypes.has(type.id)}
+                onCheckedChange={() => toggleBedType(type.id)}
               />
               <label
-                htmlFor={`bed-${type}`}
-                className="text-sm capitalize cursor-pointer text-foreground"
+                htmlFor={`bed-${type.id}`}
+                className="text-sm cursor-pointer text-foreground"
               >
-                {type}
+                {type.label}
               </label>
             </div>
           ))}
@@ -38,21 +50,21 @@ export function FilterSidebar() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Amenities</CardTitle>
+          <CardTitle className="text-lg">Comodidades</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {COMMON_AMENITIES.map((amenity) => (
-            <div key={amenity} className="flex items-center space-x-2">
+            <div key={amenity.id} className="flex items-center space-x-2">
               <Checkbox
-                id={`amenity-${amenity}`}
-                checked={filters.amenities.has(amenity)}
-                onCheckedChange={() => toggleAmenity(amenity)}
+                id={`amenity-${amenity.id}`}
+                checked={filters.amenities.has(amenity.id)}
+                onCheckedChange={() => toggleAmenity(amenity.id)}
               />
               <label
-                htmlFor={`amenity-${amenity}`}
-                className="text-sm capitalize cursor-pointer text-foreground"
+                htmlFor={`amenity-${amenity.id}`}
+                className="text-sm cursor-pointer text-foreground"
               >
-                {amenity.replace('_', ' ')}
+                {amenity.label}
               </label>
             </div>
           ))}
@@ -61,7 +73,7 @@ export function FilterSidebar() {
 
       {(filters.bedTypes.size > 0 || filters.amenities.size > 0) && (
         <Button onClick={clearFilters} variant="outline" className="w-full">
-          Clear Filters
+          Limpar Filtros
         </Button>
       )}
     </div>

@@ -1,31 +1,33 @@
-import { createClient } from '@/lib/supabase-server'
-import { NextRequest, NextResponse } from 'next/server'
+// app/api/reservations/route.ts
+import { createClient } from '@/lib/supabase-server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getReservasByUsuarioId } from '@/lib/services/reservasService';
 
+/**
+ * API endpoint para buscar as reservas do usuário autenticado.
+ */
 export async function GET(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const reservas = await getReservasByUsuarioId(user.id);
+
+    return NextResponse.json(reservas);
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error(`API Error in GET /api/reservations: ${errorMessage}`);
+    return NextResponse.json(
+      { 
+        error: 'Falha ao buscar as reservas.',
+        details: errorMessage 
+      }, 
+      { status: 500 }
+    );
   }
-
-  const { data: bookings, error } = await supabase
-    .from('bookings')
-    .select(`
-      id,
-      start_date,
-      end_date,
-      bed:beds (
-        *,
-        room:rooms (*)
-      )
-    `)
-    .eq('guest_id', user.id) // Assuming guest_id links to auth.users
-    .order('start_date', { ascending: false })
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json(bookings)
 }

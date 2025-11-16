@@ -1,122 +1,132 @@
-import { create } from 'zustand'
-import { Bed } from './types'
+import { create } from 'zustand';
+import { Quarto, Vaga } from './types';
 
+// Tipos para o store
 interface DateRange {
-  start: string | null
-  end: string | null
+  start: string | null;
+  end: string | null;
 }
 
-interface CartItem {
-  bed: Bed
-  dateRange: DateRange
-  cart_item_id: string
+export interface CartItem {
+  id: string; // ID do item no carrinho (carrinho_itens.id)
+  data_inicio: string;
+  data_fim: string;
+  vaga: Vaga & { quarto: Quarto };
 }
 
 interface FilterState {
-  bedTypes: Set<string>
-  amenities: Set<string>
+  bedTypes: Set<string>;
+  amenities: Set<string>;
 }
 
 interface BookingState {
-  dateRange: DateRange
-  setDateRange: (start: string | null, end: string | null) => void
-  selectedBed: string | null
-  setSelectedBed: (bedId: string | null) => void
-  isBooking: boolean
-  setIsBooking: (isBooking: boolean) => void
-  filters: FilterState
-  toggleBedType: (type: string) => void
-  toggleAmenity: (amenity: string) => void
-  clearFilters: () => void
-  cart: CartItem[]
-  fetchCart: () => Promise<void>
-  addCartItem: (bed: Bed, dateRange: DateRange) => Promise<void>
-  removeCartItem: (cart_item_id: string) => Promise<void>
-  clearCart: () => Promise<void>
-  clearCartFromStore: () => void
+  dateRange: DateRange;
+  setDateRange: (start: string | null, end: string | null) => void;
+  filters: FilterState;
+  toggleBedType: (type: string) => void;
+  toggleAmenity: (amenity: string) => void;
+  clearFilters: () => void;
+  cart: CartItem[];
+  fetchCart: () => Promise<void>;
+  addCartItem: (quarto: Quarto, vaga: Vaga, dateRange: DateRange) => Promise<void>;
+  removeCartItem: (itemId: string) => Promise<void>;
+  clearCart: () => Promise<void>;
+  clearCartFromStore: () => void; // Adicionada a assinatura da função
 }
 
 export const useBookingStore = create<BookingState>((set, get) => ({
   dateRange: { start: null, end: null },
-  setDateRange: (start, end) =>
-    set((state) => {
-      if (state.dateRange.start === start && state.dateRange.end === end) {
-        return {} // Don't update state if the date range is the same
-      }
-      return { dateRange: { start, end } }
-    }),
-  selectedBed: null,
-  setSelectedBed: (bedId) => set({ selectedBed: bedId }),
-  isBooking: false,
-  setIsBooking: (isBooking) => set({ isBooking }),
+  setDateRange: (start, end) => {
+    // Otimização: não atualiza o estado se o período for o mesmo
+    if (get().dateRange.start === start && get().dateRange.end === end) {
+      return;
+    }
+    set({ dateRange: { start, end } });
+  },
+  
   filters: {
     bedTypes: new Set(),
     amenities: new Set(),
   },
   toggleBedType: (type) =>
     set((state) => {
-      const newBedTypes = new Set(state.filters.bedTypes)
-      if (newBedTypes.has(type)) {
-        newBedTypes.delete(type)
-      } else {
-        newBedTypes.add(type)
-      }
-      return {
-        filters: { ...state.filters, bedTypes: newBedTypes },
-      }
+      const newBedTypes = new Set(state.filters.bedTypes);
+      newBedTypes.has(type) ? newBedTypes.delete(type) : newBedTypes.add(type);
+      return { filters: { ...state.filters, bedTypes: newBedTypes } };
     }),
   toggleAmenity: (amenity) =>
     set((state) => {
-      const newAmenities = new Set(state.filters.amenities)
-      if (newAmenities.has(amenity)) {
-        newAmenities.delete(amenity)
-      } else {
-        newAmenities.add(amenity)
-      }
-      return {
-        filters: { ...state.filters, amenities: newAmenities },
-      }
+      const newAmenities = new Set(state.filters.amenities);
+      newAmenities.has(amenity) ? newAmenities.delete(amenity) : newAmenities.add(amenity);
+      return { filters: { ...state.filters, amenities: newAmenities } };
     }),
-  clearFilters: () =>
-    set({
-      filters: {
-        bedTypes: new Set(),
-        amenities: new Set(),
-      },
-    }),
+  clearFilters: () => set({ filters: { bedTypes: new Set(), amenities: new Set() } }),
+  
   cart: [],
   fetchCart: async () => {
-    const response = await fetch('/api/cart')
-    if (response.ok) {
-      const cart = await response.json()
-      set({ cart })
+    try {
+      const response = await fetch('/api/cart');
+      if (!response.ok) throw new Error('Falha ao buscar o carrinho');
+      const cart = await response.json();
+      set({ cart });
+    } catch (error) {
+      console.error("fetchCart error:", error);
+      // Opcional: adicionar estado de erro ao store
     }
   },
-  addCartItem: async (bed, dateRange) => {
-    await fetch('/api/cart', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        bed_id: bed.id,
-        start_date: dateRange.start,
-        end_date: dateRange.end,
-      }),
-    })
-    await get().fetchCart()
+  
+  addCartItem: async (quarto, vaga, dateRange) => {
+    if (!dateRange.start || !dateRange.end) {
+      console.error("Período de datas inválido para adicionar ao carrinho.");
+      return; // Prevenção de erro
+    }
+    try {
+      const response = await fetch('/api/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vaga_id: vaga.id,
+          data_inicio: dateRange.start,
+          data_fim: dateRange.end,
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || 'Falha ao adicionar item ao carrinho');
+      }
+      // Atualiza o carrinho após a adição bem-sucedida
+      await get().fetchCart();
+    } catch (error) {
+      console.error("addCartItem error:", error);
+      throw error; // Re-lança para que a UI possa tratar
+    }
   },
-  removeCartItem: async (cart_item_id) => {
-    await fetch('/api/cart', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cart_item_id }),
-    })
-    await get().fetchCart()
+  
+  removeCartItem: async (itemId) => {
+    try {
+      const response = await fetch('/api/cart', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId }),
+      });
+      if (!response.ok) throw new Error('Falha ao remover item do carrinho');
+      // Otimização: remove o item localmente para uma UI mais rápida
+      set(state => ({
+        cart: state.cart.filter(item => item.id !== itemId)
+      }));
+    } catch (error) {
+      console.error("removeCartItem error:", error);
+      // Se a remoção local falhar, busca novamente do servidor para garantir consistência
+      await get().fetchCart();
+    }
   },
+
   clearCart: async () => {
-    const { cart } = get()
-    for (const item of cart) {
-      await get().removeCartItem(item.cart_item_id)
-    }
+    const { cart } = get();
+    // Executa todas as remoções em paralelo para otimização
+    await Promise.all(cart.map(item => get().removeCartItem(item.id)));
   },
+
+  // Implementação da função que faltava
   clearCartFromStore: () => set({ cart: [] }),
-}))
+}));

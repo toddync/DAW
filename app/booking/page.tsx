@@ -3,38 +3,49 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import { getSupabaseClient } from '@/lib/supabase-client'
+import { AlertCircle, Bed, Calendar, Home } from 'lucide-react'
+
+import { useBookingStore } from '@/lib/store'
+import { QuartoComVagas, Vaga } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, Wifi, Droplets, Wind } from 'lucide-react'
-import { useBookingStore } from '@/lib/store'
 import { DateRangePicker } from '@/components/date-range-picker'
 import { FilterSidebar } from '@/components/filter-sidebar'
-import { RoomWithBeds } from '@/lib/types'
+import { Skeleton } from '@/components/ui/skeleton'
 
-const amenityIcons: Record<string, React.ReactNode> = {
-  wifi: <Wifi className="w-4 h-4" />,
-  bathroom: <Droplets className="w-4 h-4" />,
-  air_conditioning: <Wind className="w-4 h-4" />,
-}
-
-function getAmenityIcon(amenity: string) {
-  return amenityIcons[amenity] || null
+function RoomSkeleton() {
+  return (
+    <Card className="h-full overflow-hidden">
+      <Skeleton className="h-48 w-full" />
+      <CardHeader>
+        <Skeleton className="h-6 w-3/4" />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-2/3" />
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-6 w-20" />
+          <Skeleton className="h-6 w-24" />
+        </div>
+        <div className="pt-2 border-t border-border">
+          <Skeleton className="h-5 w-1/2" />
+        </div>
+        <Skeleton className="h-10 w-full mt-4" />
+      </CardContent>
+    </Card>
+  )
 }
 
 export default function BookingPage() {
-  const [rooms, setRooms] = useState<RoomWithBeds[]>([])
-  const [filteredRooms, setFilteredRooms] = useState<RoomWithBeds[]>([])
+  const [quartos, setQuartos] = useState<QuartoComVagas[]>([])
+  const [filteredQuartos, setFilteredQuartos] = useState<QuartoComVagas[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { dateRange, filters } = useBookingStore()
-  const router = useRouter()
-  const supabase = getSupabaseClient()
 
   useEffect(() => {
-    async function fetchRooms() {
+    async function fetchQuartos() {
       try {
         setLoading(true)
         const params = new URLSearchParams()
@@ -42,149 +53,142 @@ export default function BookingPage() {
         if (dateRange.end) params.append('end', dateRange.end)
 
         const response = await fetch(`/api/rooms?${params}`)
-        if (!response.ok) throw new Error('Failed to fetch rooms')
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.details || 'Falha ao buscar quartos');
+        }
 
-        const data = await response.json()
-        setRooms(data)
+        const data: QuartoComVagas[] = await response.json()
+        setQuartos(data)
         setError(null)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred')
+        setError(err instanceof Error ? err.message : 'Ocorreu um erro desconhecido')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchRooms()
+    fetchQuartos()
   }, [dateRange])
 
   useEffect(() => {
-    let filtered = rooms
+    let filtered = quartos
 
+    // Lógica de filtro para tipo de cama
     if (filters.bedTypes.size > 0) {
-      filtered = filtered.map((room) => ({
-        ...room,
-        beds: room.beds.filter((bed) => filters.bedTypes.has(bed.type)),
-      }))
+      filtered = filtered.map((quarto) => ({
+        ...quarto,
+        vagas: quarto.vagas.filter((vaga) => filters.bedTypes.has(vaga.tipo_cama)),
+      })).filter(quarto => quarto.vagas.length > 0);
     }
 
+    // Lógica de filtro para comodidades
     if (filters.amenities.size > 0) {
-      filtered = filtered.filter((room) =>
-        Array.from(filters.amenities).some((amenity) =>
-          room.amenities.includes(amenity)
+      filtered = filtered.filter((quarto) =>
+        Array.from(filters.amenities).every((amenityCode) =>
+          quarto.caracteristicas.some(c => c.caracteristica.codigo === amenityCode)
         )
       )
     }
 
-    filtered = filtered.filter((room) => room.beds.length > 0)
+    setFilteredQuartos(filtered)
+  }, [quartos, filters])
 
-    setFilteredRooms(filtered)
-  }, [rooms, filters])
-
-  const getAvailableCount = (beds: any[]) => {
-    return beds.filter((b) => b.available !== false).length
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="mb-4 text-foreground text-lg">Loading rooms...</div>
-        </div>
-      </div>
-    )
+  const getAvailableCount = (vagas: Vaga[]) => {
+    if (!dateRange.start || !dateRange.end) return vagas.length;
+    return vagas.filter((v) => v.available).length
   }
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border sticky top-16 bg-card z-10">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Available Rooms</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Quartos Disponíveis</h1>
+          <div className="text-muted-foreground mt-2 flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
             {dateRange.start && dateRange.end
-              ? `Viewing availability from ${dateRange.start} to ${dateRange.end}`
-              : 'Select dates to view availability'}
-          </p>
+              ? `Visualizando disponibilidade de ${dateRange.start} a ${dateRange.end}`
+              : 'Selecione um período para consultar os preços e a disponibilidade'}
+          </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex gap-8">
-          {/* Sidebar */}
-          <aside className="w-80 flex-shrink-0 space-y-4 max-h-fit sticky top-32">
+        <div className="flex flex-col lg:flex-row gap-8">
+          <aside className="w-full lg:w-80 flex-shrink-0 space-y-4 max-h-fit lg:sticky top-32">
             <DateRangePicker />
             <FilterSidebar />
           </aside>
 
-          {/* Main Content */}
           <div className="flex-1 min-w-0">
             {error && (
-              <div className="mb-6 p-4 bg-destructive/10 border border-destructive rounded-lg flex gap-2">
-                <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-                <div className="text-destructive">{error}</div>
+              <div className="mb-6 p-4 bg-destructive/10 border border-destructive rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+                <div className="text-destructive font-medium">{error}</div>
               </div>
             )}
 
-            {filteredRooms.length === 0 ? (
-              <div className="text-center py-12">
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <RoomSkeleton />
+                <RoomSkeleton />
+              </div>
+            ) : filteredQuartos.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-border rounded-lg">
                 <p className="text-muted-foreground text-lg">
-                  {rooms.length === 0 ? 'No rooms available' : 'No rooms match your filters'}
+                  {quartos.length === 0 ? 'Nenhum quarto disponível no momento' : 'Nenhum quarto corresponde aos seus filtros'}
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filteredRooms.map((room) => (
-                  <Link href={`/rooms/${room.id}`} key={room.id}>
-                    <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer overflow-hidden">
-                      {room.images && room.images.length > 0 && (
-                        <div className="relative h-48 w-full bg-muted overflow-hidden">
-                          <Image
-                            src={room.images[0] || "/placeholder.svg"}
-                            alt={room.name}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      )}
+                {filteredQuartos.map((quarto) => (
+                  <Link href={`/rooms/${quarto.id}`} key={quarto.id}>
+                    <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer overflow-hidden group">
+                      <div className="relative h-48 w-full bg-muted overflow-hidden">
+                        <Image
+                          src={quarto.images?.[0] || "/placeholder.svg"}
+                          alt={`Foto do Quarto Nº ${quarto.numero}`}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
 
                       <CardHeader>
-                        <CardTitle className="text-xl">{room.name}</CardTitle>
+                        <CardTitle className="text-xl flex items-center gap-2">
+                          <Home className="w-5 h-5 text-primary" />
+                          Quarto Nº {quarto.numero}
+                        </CardTitle>
                       </CardHeader>
 
                       <CardContent className="space-y-4">
-                        <p className="text-sm text-muted-foreground">{room.description}</p>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{quarto.descricao}</p>
 
                         <div className="flex flex-wrap gap-2">
-                          {room.bathroom && (
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              <Droplets className="w-3 h-3" />
-                              Bathroom
-                            </Badge>
-                          )}
-                          {room.amenities.slice(0, 2).map((amenity) => (
-                            <Badge key={amenity} variant="outline" className="text-xs">
-                              {amenity.replace('_', ' ')}
+                          {quarto.caracteristicas.slice(0, 3).map(({ caracteristica }) => (
+                            <Badge key={caracteristica.codigo} variant="outline" className="text-xs">
+                              {caracteristica.nome}
                             </Badge>
                           ))}
-                          {room.amenities.length > 2 && (
+                          {quarto.caracteristicas.length > 3 && (
                             <Badge variant="outline" className="text-xs">
-                              +{room.amenities.length - 2}
+                              +{quarto.caracteristicas.length - 3} mais
                             </Badge>
                           )}
                         </div>
 
                         <div className="pt-2 border-t border-border">
-                          <p className="text-sm font-medium text-foreground">
-                            {room.beds.length} beds available
+                          <div className="text-sm font-medium text-foreground flex items-center gap-2">
+                            <Bed className="w-4 h-4" />
+                            <span>{getAvailableCount(quarto.vagas)} de {quarto.vagas.length} vagas disponíveis</span>
+                          </div>
+                          <p className="text-lg font-bold text-primary mt-1">
+                            A partir de R$ {quarto.preco_base.toFixed(2)}
+                            <span className="text-xs font-normal text-muted-foreground"> / noite</span>
                           </p>
-                          {dateRange.start && dateRange.end && (
-                            <p className="text-sm text-muted-foreground">
-                              {getAvailableCount(room.beds)} available for dates
-                            </p>
-                          )}
                         </div>
 
                         <Button className="w-full mt-4" variant="default">
-                          View Room
+                          Ver Detalhes
                         </Button>
                       </CardContent>
                     </Card>
