@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Loader2 } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
+import { ptBR } from "date-fns/locale" // Importar o locale ptBR
 import { cn } from "@/lib/utils"
 
 // Esquema de validação para o formulário de pacote_quartos
@@ -163,7 +164,7 @@ export function PackageForm({ initialData, onSubmit, isSubmitting }: PackageForm
                         )}
                       >
                         {field.value ? (
-                          format(field.value, "PPP")
+                          format(field.value, "PPP", { locale: ptBR })
                         ) : (
                           <span>Selecione uma data</span>
                         )}
@@ -180,6 +181,7 @@ export function PackageForm({ initialData, onSubmit, isSubmitting }: PackageForm
                         date < new Date() || date < new Date("1900-01-01")
                       }
                       initialFocus
+                      locale={ptBR} // Definir o locale para o calendário
                     />
                   </PopoverContent>
                 </Popover>
@@ -204,7 +206,7 @@ export function PackageForm({ initialData, onSubmit, isSubmitting }: PackageForm
                         )}
                       >
                         {field.value ? (
-                          format(field.value, "PPP")
+                          format(field.value, "PPP", { locale: ptBR })
                         ) : (
                           <span>Selecione uma data</span>
                         )}
@@ -221,6 +223,7 @@ export function PackageForm({ initialData, onSubmit, isSubmitting }: PackageForm
                         date < (form.watch("data_inicio") || new Date()) || date < new Date("1900-01-01")
                       }
                       initialFocus
+                      locale={ptBR} // Definir o locale para o calendário
                     />
                   </PopoverContent>
                 </Popover>
@@ -236,7 +239,7 @@ export function PackageForm({ initialData, onSubmit, isSubmitting }: PackageForm
             <FormItem>
               <FormLabel>Preço Total do Pacote</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" placeholder="Ex: 300.00" {...field} />
+                <Input type="number" step="0.01" placeholder="Ex: 300,00" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

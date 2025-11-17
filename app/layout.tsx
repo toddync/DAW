@@ -9,8 +9,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Urban Hostel - Book Your Room',
-  description: 'Book your perfect room at Urban Hostel - vibrant community living in the heart of the city',
+  title: 'Hostel Santa Teresa - Reserve seu Quarto',
+  description: 'Reserve seu quarto perfeito no Hostel Santa Teresa - uma comunidade vibrante no coração da cidade.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -37,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <body className={`font-sans antialiased`}>
         <div className="min-h-screen bg-background">
           <Header />

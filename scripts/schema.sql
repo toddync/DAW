@@ -1,6 +1,44 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.usuarios (
+  id uuid NOT NULL,
+  nome character varying,
+  email character varying NOT NULL UNIQUE,
+  role text NOT NULL DEFAULT 'client'::text,
+  cpf character varying UNIQUE,
+  identidade character varying,
+  passaporte character varying,
+  nacionalidade character varying,
+  endereco text,
+  telefone character varying,
+  data_cadastro timestamp with time zone NOT NULL DEFAULT now(),
+  ativo boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT usuarios_pkey PRIMARY KEY (id),
+  CONSTRAINT usuarios_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+
+CREATE TABLE public.reservas (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  usuario_id uuid NOT NULL,
+  politica_cancelamento_id uuid NOT NULL,
+  codigo_reserva character varying NOT NULL UNIQUE,
+  data_checkin date NOT NULL,
+  data_checkout date NOT NULL,
+  data_reserva timestamp with time zone NOT NULL DEFAULT now(),
+  status character varying NOT NULL DEFAULT 'pendente'::character varying,
+  valor_total numeric NOT NULL CHECK (valor_total >= 0::numeric),
+  termos_aceitos boolean NOT NULL DEFAULT false,
+  data_aceite_termos timestamp with time zone,
+  motivo_cancelamento text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT reservas_pkey PRIMARY KEY (id),
+  CONSTRAINT reservas_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id)
+);
+
 CREATE TABLE public.auditoria_reservas (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   reserva_id uuid NOT NULL,
@@ -27,7 +65,6 @@ CREATE TABLE public.avaliacoes (
   data_resposta timestamp with time zone,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT avaliacoes_pkey PRIMARY KEY (id),
-  CONSTRAINT avaliacoes_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id),
   CONSTRAINT avaliacoes_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id)
 );
 CREATE TABLE public.caracteristicas_quarto (
@@ -62,8 +99,7 @@ CREATE TABLE public.carrinho_itens (
   data_fim date NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT carrinho_itens_pkey PRIMARY KEY (id),
-  CONSTRAINT carrinho_itens_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id),
-  CONSTRAINT carrinho_itens_vaga_id_fkey FOREIGN KEY (vaga_id) REFERENCES public.vagas(id)
+  CONSTRAINT carrinho_itens_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id)
 );
 CREATE TABLE public.controle_ocupacao (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -73,8 +109,7 @@ CREATE TABLE public.controle_ocupacao (
   vagas_disponiveis integer NOT NULL CHECK (vagas_disponiveis >= 0),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT controle_ocupacao_pkey PRIMARY KEY (id),
-  CONSTRAINT controle_ocupacao_quarto_id_fkey FOREIGN KEY (quarto_id) REFERENCES public.quartos(id)
+  CONSTRAINT controle_ocupacao_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.dados_pagamento_seguros (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -84,8 +119,7 @@ CREATE TABLE public.dados_pagamento_seguros (
   hash_dados character varying NOT NULL,
   expirado boolean NOT NULL DEFAULT false,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT dados_pagamento_seguros_pkey PRIMARY KEY (id),
-  CONSTRAINT dados_pagamento_seguros_pagamento_id_fkey FOREIGN KEY (pagamento_id) REFERENCES public.pagamentos(id)
+  CONSTRAINT dados_pagamento_seguros_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.facilidades (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -105,8 +139,7 @@ CREATE TABLE public.historico_precos (
   motivo_alteracao character varying,
   usuario_alteracao character varying,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT historico_precos_pkey PRIMARY KEY (id),
-  CONSTRAINT historico_precos_quarto_id_fkey FOREIGN KEY (quarto_id) REFERENCES public.quartos(id)
+  CONSTRAINT historico_precos_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.limites_visitas (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -140,7 +173,7 @@ CREATE TABLE public.pacote_facilidades (
   CONSTRAINT pacote_facilidades_facilidade_id_fkey FOREIGN KEY (facilidade_id) REFERENCES public.facilidades(id)
 );
 CREATE TABLE public.pacote_quartos (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
   pacote_id uuid NOT NULL,
   quarto_id uuid NOT NULL,
   data_inicio date NOT NULL,
@@ -149,9 +182,7 @@ CREATE TABLE public.pacote_quartos (
   fechar_quarto boolean DEFAULT false,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT pacote_quartos_pkey PRIMARY KEY (id),
-  CONSTRAINT pacote_quartos_pacote_id_fkey FOREIGN KEY (pacote_id) REFERENCES public.pacotes(id),
-  CONSTRAINT pacote_quartos_quarto_id_fkey FOREIGN KEY (quarto_id) REFERENCES public.quartos(id)
+  CONSTRAINT pacote_quartos_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.pacote_regras (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -165,7 +196,7 @@ CREATE TABLE public.pacote_regras (
   CONSTRAINT pacote_regras_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.pacotes (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
   nome character varying NOT NULL,
   descricao text,
   created_at timestamp with time zone DEFAULT now(),
@@ -177,8 +208,8 @@ CREATE TABLE public.pagamentos (
   reserva_id uuid NOT NULL,
   parcela_numero integer NOT NULL DEFAULT 1,
   valor_parcela numeric NOT NULL CHECK (valor_parcela > 0::numeric),
-  metodo_pagamento USER-DEFINED NOT NULL,
-  status USER-DEFINED NOT NULL DEFAULT 'pendente'::status_pagamento,
+  metodo_pagamento character varying NOT NULL,
+  status character varying NOT NULL DEFAULT 'pendente'::character varying,
   data_vencimento date,
   data_pagamento timestamp with time zone,
   gateway_pagamento character varying,
@@ -187,8 +218,7 @@ CREATE TABLE public.pagamentos (
   bandeira_cartao character varying,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT pagamentos_pkey PRIMARY KEY (id),
-  CONSTRAINT pagamentos_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id)
+  CONSTRAINT pagamentos_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.politicas_cancelamento (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -213,7 +243,6 @@ CREATE TABLE public.quarto_caracteristicas (
   prioridade integer NOT NULL DEFAULT 0,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT quarto_caracteristicas_pkey PRIMARY KEY (id),
-  CONSTRAINT quarto_caracteristicas_quarto_id_fkey FOREIGN KEY (quarto_id) REFERENCES public.quartos(id),
   CONSTRAINT quarto_caracteristicas_caracteristica_id_fkey FOREIGN KEY (caracteristica_id) REFERENCES public.caracteristicas_quarto(id)
 );
 CREATE TABLE public.quartos (
@@ -224,7 +253,7 @@ CREATE TABLE public.quartos (
   preco_base numeric NOT NULL CHECK (preco_base > 0::numeric),
   ativo boolean NOT NULL DEFAULT true,
   descricao text,
-  images ARRAY DEFAULT '{}'::text[],
+  images text[] DEFAULT '{}'::text[],
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT quartos_pkey PRIMARY KEY (id)
@@ -236,9 +265,7 @@ CREATE TABLE public.reserva_estacionamento (
   data_entrada date NOT NULL,
   data_saida date NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT reserva_estacionamento_pkey PRIMARY KEY (id),
-  CONSTRAINT reserva_estacionamento_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id),
-  CONSTRAINT reserva_estacionamento_vaga_estacionamento_id_fkey FOREIGN KEY (vaga_estacionamento_id) REFERENCES public.vagas_estacionamento(id)
+  CONSTRAINT reserva_estacionamento_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.reserva_facilidades (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -248,7 +275,6 @@ CREATE TABLE public.reserva_facilidades (
   observacoes text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT reserva_facilidades_pkey PRIMARY KEY (id),
-  CONSTRAINT reserva_facilidades_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id),
   CONSTRAINT reserva_facilidades_facilidade_id_fkey FOREIGN KEY (facilidade_id) REFERENCES public.facilidades(id)
 );
 CREATE TABLE public.reserva_pacotes (
@@ -259,8 +285,7 @@ CREATE TABLE public.reserva_pacotes (
   desconto_aplicado numeric NOT NULL DEFAULT 0 CHECK (desconto_aplicado >= 0::numeric),
   detalhes_aplicacao jsonb,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT reserva_pacotes_pkey PRIMARY KEY (id),
-  CONSTRAINT reserva_pacotes_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id)
+  CONSTRAINT reserva_pacotes_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.reserva_vagas (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -272,28 +297,7 @@ CREATE TABLE public.reserva_vagas (
   preco_aplicado numeric NOT NULL CHECK (preco_aplicado >= 0::numeric),
   observacoes text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT reserva_vagas_pkey PRIMARY KEY (id),
-  CONSTRAINT reserva_vagas_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id),
-  CONSTRAINT reserva_vagas_vaga_id_fkey FOREIGN KEY (vaga_id) REFERENCES public.vagas(id)
-);
-CREATE TABLE public.reservas (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  usuario_id uuid NOT NULL,
-  politica_cancelamento_id uuid NOT NULL,
-  codigo_reserva character varying NOT NULL UNIQUE,
-  data_checkin date NOT NULL,
-  data_checkout date NOT NULL,
-  data_reserva timestamp with time zone NOT NULL DEFAULT now(),
-  status USER-DEFINED NOT NULL DEFAULT 'pendente'::status_reserva,
-  valor_total numeric NOT NULL CHECK (valor_total >= 0::numeric),
-  termos_aceitos boolean NOT NULL DEFAULT false,
-  data_aceite_termos timestamp with time zone,
-  motivo_cancelamento text,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT reservas_pkey PRIMARY KEY (id),
-  CONSTRAINT reservas_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id),
-  CONSTRAINT reservas_politica_cancelamento_id_fkey FOREIGN KEY (politica_cancelamento_id) REFERENCES public.politicas_cancelamento(id)
+  CONSTRAINT reserva_vagas_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.termos_uso (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -305,24 +309,7 @@ CREATE TABLE public.termos_uso (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT termos_uso_pkey PRIMARY KEY (id)
 );
-CREATE TABLE public.usuarios (
-  id uuid NOT NULL,
-  nome character varying,
-  email character varying NOT NULL UNIQUE,
-  role text NOT NULL DEFAULT 'client'::text,
-  cpf character varying UNIQUE,
-  identidade character varying,
-  passaporte character varying,
-  nacionalidade character varying,
-  endereco text,
-  telefone character varying,
-  data_cadastro timestamp with time zone NOT NULL DEFAULT now(),
-  ativo boolean NOT NULL DEFAULT true,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT usuarios_pkey PRIMARY KEY (id),
-  CONSTRAINT usuarios_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
-);
+
 CREATE TABLE public.vaga_caracteristicas (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   vaga_id uuid NOT NULL,
@@ -334,7 +321,6 @@ CREATE TABLE public.vaga_caracteristicas (
   prioridade integer NOT NULL DEFAULT 0,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT vaga_caracteristicas_pkey PRIMARY KEY (id),
-  CONSTRAINT vaga_caracteristicas_vaga_id_fkey FOREIGN KEY (vaga_id) REFERENCES public.vagas(id),
   CONSTRAINT vaga_caracteristicas_caracteristica_id_fkey FOREIGN KEY (caracteristica_id) REFERENCES public.caracteristicas_vaga(id)
 );
 CREATE TABLE public.vagas (
@@ -347,8 +333,7 @@ CREATE TABLE public.vagas (
   observacoes text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT vagas_pkey PRIMARY KEY (id),
-  CONSTRAINT vagas_quarto_id_fkey FOREIGN KEY (quarto_id) REFERENCES public.quartos(id)
+  CONSTRAINT vagas_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.vagas_estacionamento (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -369,6 +354,69 @@ CREATE TABLE public.visitantes (
   hora_saida time without time zone,
   observacoes text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT visitantes_pkey PRIMARY KEY (id),
-  CONSTRAINT visitantes_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id)
+  CONSTRAINT visitantes_pkey PRIMARY KEY (id)
 );
+
+-- Add foreign key constraints that reference tables created later
+ALTER TABLE public.avaliacoes
+  ADD CONSTRAINT avaliacoes_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id);
+
+ALTER TABLE public.pagamentos
+  ADD CONSTRAINT pagamentos_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id);
+
+ALTER TABLE public.reserva_estacionamento
+  ADD CONSTRAINT reserva_estacionamento_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id);
+
+ALTER TABLE public.reserva_facilidades
+  ADD CONSTRAINT reserva_facilidades_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id);
+
+ALTER TABLE public.reserva_pacotes
+  ADD CONSTRAINT reserva_pacotes_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id);
+
+ALTER TABLE public.reserva_vagas
+  ADD CONSTRAINT reserva_vagas_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id);
+
+ALTER TABLE public.visitantes
+  ADD CONSTRAINT visitantes_reserva_id_fkey FOREIGN KEY (reserva_id) REFERENCES public.reservas(id);
+
+-- Add FK from reservas to politicas_cancelamento after politicas_cancelamento is created
+ALTER TABLE public.reservas
+  ADD CONSTRAINT reservas_politica_cancelamento_id_fkey FOREIGN KEY (politica_cancelamento_id) REFERENCES public.politicas_cancelamento(id);
+
+-- Add FKs that reference public.vagas after vagas is created
+ALTER TABLE public.carrinho_itens
+  ADD CONSTRAINT carrinho_itens_vaga_id_fkey FOREIGN KEY (vaga_id) REFERENCES public.vagas(id);
+
+ALTER TABLE public.reserva_vagas
+  ADD CONSTRAINT reserva_vagas_vaga_id_fkey FOREIGN KEY (vaga_id) REFERENCES public.vagas(id);
+
+ALTER TABLE public.vaga_caracteristicas
+  ADD CONSTRAINT vaga_caracteristicas_vaga_id_fkey FOREIGN KEY (vaga_id) REFERENCES public.vagas(id);
+
+-- Add FKs that reference public.quartos after quartos is created
+ALTER TABLE public.controle_ocupacao
+  ADD CONSTRAINT controle_ocupacao_quarto_id_fkey FOREIGN KEY (quarto_id) REFERENCES public.quartos(id);
+
+ALTER TABLE public.historico_precos
+  ADD CONSTRAINT historico_precos_quarto_id_fkey FOREIGN KEY (quarto_id) REFERENCES public.quartos(id);
+
+ALTER TABLE public.pacote_quartos
+  ADD CONSTRAINT pacote_quartos_quarto_id_fkey FOREIGN KEY (quarto_id) REFERENCES public.quartos(id);
+
+ALTER TABLE public.quarto_caracteristicas
+  ADD CONSTRAINT quarto_caracteristicas_quarto_id_fkey FOREIGN KEY (quarto_id) REFERENCES public.quartos(id);
+
+ALTER TABLE public.vagas
+  ADD CONSTRAINT vagas_quarto_id_fkey FOREIGN KEY (quarto_id) REFERENCES public.quartos(id);
+
+-- Add FKs that reference public.pacotes after pacotes is created
+ALTER TABLE public.pacote_quartos
+  ADD CONSTRAINT pacote_quartos_pacote_id_fkey FOREIGN KEY (pacote_id) REFERENCES public.pacotes(id);
+
+-- Add FKs that reference public.pagamentos after pagamentos is created
+ALTER TABLE public.dados_pagamento_seguros
+  ADD CONSTRAINT dados_pagamento_seguros_pagamento_id_fkey FOREIGN KEY (pagamento_id) REFERENCES public.pagamentos(id);
+
+-- Add FKs that reference public.vagas_estacionamento after vagas_estacionamento is created
+ALTER TABLE public.reserva_estacionamento
+  ADD CONSTRAINT reserva_estacionamento_vaga_estacionamento_id_fkey FOREIGN KEY (vaga_estacionamento_id) REFERENCES public.vagas_estacionamento(id);

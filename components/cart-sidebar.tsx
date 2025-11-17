@@ -33,30 +33,25 @@ export function CartSidebar() {
   const supabase = getSupabaseClient()
 
   useEffect(() => {
-    const fetchUserAndCart = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      if (user) {
-        fetchCart()
-      }
-    }
-    fetchUserAndCart()
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        const newUser = session?.user ?? null;
+        setUser(newUser);
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      const newUser = session?.user || null
-      setUser(newUser)
-      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-        fetchCart()
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          // A store agora verifica o usuário, então podemos chamar fetchCart diretamente
+          fetchCart();
+        } else if (event === 'SIGNED_OUT') {
+          // A store agora lida com a limpeza do carrinho, mas podemos garantir
+          useBookingStore.getState().clearCartFromStore();
+        }
       }
-      if (event === 'SIGNED_OUT') {
-        useBookingStore.getState().clearCartFromStore()
-      }
-    })
+    );
 
     return () => {
-      authListener.subscription.unsubscribe()
-    }
-  }, [supabase, fetchCart])
+      authListener.subscription.unsubscribe();
+    };
+  }, [supabase, fetchCart]);
 
   const calculateNights = (start: string, end: string) => {
     const startDate = parseISO(start)

@@ -4,10 +4,10 @@ export default function AdminPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Admin Dashboard</CardTitle>
+        <CardTitle>Painel de Administração</CardTitle>
       </CardHeader>
       <CardContent>
-        <p>Welcome to the admin dashboard. Please select a section from the sidebar to get started.</p>
+        <p>Bem-vindo ao painel de administração. Por favor, selecione uma seção na barra lateral para começar.</p>
       </CardContent>
     </Card>
   );

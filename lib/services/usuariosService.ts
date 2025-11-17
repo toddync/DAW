@@ -28,6 +28,32 @@ export async function getUsuarioById(usuarioId: string): Promise<Usuario | null>
     return data;
 }
 
+/**
+ * Cria um novo perfil de usuário. Geralmente chamado após o cadastro no Supabase Auth.
+ * @param usuarioId - O ID do novo usuário (deve ser o mesmo que o auth.users.id).
+ * @param email - O email do novo usuário.
+ * @returns O objeto do usuário recém-criado.
+ */
+export async function createUsuario(usuarioId: string, email: string): Promise<Usuario> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('usuarios')
+        .insert({
+            id: usuarioId,
+            email: email,
+            // Você pode adicionar outros valores padrão aqui se necessário
+        })
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Erro ao criar usuário:", error);
+        throw new Error("Não foi possível criar o perfil do usuário.");
+    }
+
+    return data;
+}
+
 // Define um tipo para os dados atualizáveis do perfil para segurança e clareza
 type UpdateUsuarioData = Partial<Pick<Usuario, 'nome' | 'cpf' | 'identidade' | 'passaporte' | 'nacionalidade' | 'endereco' | 'telefone'>>;
 

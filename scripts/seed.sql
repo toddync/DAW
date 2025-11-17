@@ -146,10 +146,54 @@ BEGIN
     -- Selecionar uma vaga e uma política de cancelamento
     SELECT id INTO v_vaga_id FROM vagas WHERE quarto_id = (SELECT id FROM quartos WHERE numero = '101') AND numero_vaga = 1 LIMIT 1;
     SELECT id INTO v_politica_id FROM politicas_cancelamento WHERE nome = 'Política Flexível' LIMIT 1;
+    -- Garantir que exista um registro em `usuarios` para o id fornecido
+    IF NOT EXISTS (SELECT 1 FROM usuarios WHERE id = v_usuario_id) THEN
+        -- Se o id informado existe em auth.users, use-o para criar o usuário em public.usuarios
+        IF EXISTS (SELECT 1 FROM auth.users WHERE id = v_usuario_id) THEN
+            INSERT INTO usuarios (id, nome, email, data_cadastro, ativo, created_at, updated_at)
+            VALUES (
+                v_usuario_id,
+                'Seed User',
+                'seed-' || encode(gen_random_bytes(4), 'hex') || '@example.com',
+                NOW(),
+                true,
+                NOW(),
+                NOW()
+            );
+        ELSE
+            -- Se o id informado não existe em auth.users, tente pegar o primeiro usuário do auth (se houver)
+            SELECT id INTO v_usuario_id FROM auth.users LIMIT 1;
+            IF v_usuario_id IS NULL THEN
+                RAISE NOTICE 'Nenhum usuário encontrado em auth.users e o id fornecido não está presente em public.usuarios. Pulando criação de reserva. Crie um usuário no Supabase Auth ou ajuste v_usuario_id.';
+                RETURN;
+            ELSE
+                -- Cria um registro em usuarios vinculado ao primeiro auth.user disponível
+                INSERT INTO usuarios (id, nome, email, data_cadastro, ativo, created_at, updated_at)
+                VALUES (
+                    v_usuario_id,
+                    'Seed User',
+                    'seed-' || encode(gen_random_bytes(4), 'hex') || '@example.com',
+                    NOW(),
+                    true,
+                    NOW(),
+                    NOW()
+                );
+            END IF;
+        END IF;
+    END IF;
 
-    -- Inserir a reserva principal
-    INSERT INTO reservas (usuario_id, politica_cancelamento_id, data_checkin, data_checkout, valor_total, termos_aceitos, data_aceite_termos)
-    VALUES (v_usuario_id, v_politica_id, CURRENT_DATE + 10, CURRENT_DATE + 15, 250.00, true, NOW())
+    -- Inserir a reserva principal (adicionando codigo_reserva obrigatório)
+    INSERT INTO reservas (usuario_id, politica_cancelamento_id, codigo_reserva, data_checkin, data_checkout, valor_total, termos_aceitos, data_aceite_termos)
+    VALUES (
+        v_usuario_id,
+        v_politica_id,
+        encode(gen_random_bytes(6), 'hex'), -- gera um código de 12 caracteres
+        CURRENT_DATE + 10,
+        CURRENT_DATE + 15,
+        250.00,
+        true,
+        NOW()
+    )
     RETURNING id INTO v_reserva_id;
 
     -- Inserir a vaga na reserva

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getSupabaseClient } from '@/lib/supabase-client';
 import { Quarto, Vaga } from './types';
 
 // Tipos para o store
@@ -36,14 +37,7 @@ interface BookingState {
 
 export const useBookingStore = create<BookingState>((set, get) => ({
   dateRange: { start: null, end: null },
-  setDateRange: (start, end) => {
-    // Otimização: não atualiza o estado se o período for o mesmo
-    if (get().dateRange.start === start && get().dateRange.end === end) {
-      return;
-    }
-    set({ dateRange: { start, end } });
-  },
-  
+  setDateRange: (start, end) => set({ dateRange: { start, end } }),
   filters: {
     bedTypes: new Set(),
     amenities: new Set(),
@@ -51,34 +45,64 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   toggleBedType: (type) =>
     set((state) => {
       const newBedTypes = new Set(state.filters.bedTypes);
-      newBedTypes.has(type) ? newBedTypes.delete(type) : newBedTypes.add(type);
+      if (newBedTypes.has(type)) {
+        newBedTypes.delete(type);
+      } else {
+        newBedTypes.add(type);
+      }
       return { filters: { ...state.filters, bedTypes: newBedTypes } };
     }),
   toggleAmenity: (amenity) =>
     set((state) => {
       const newAmenities = new Set(state.filters.amenities);
-      newAmenities.has(amenity) ? newAmenities.delete(amenity) : newAmenities.add(amenity);
+      if (newAmenities.has(amenity)) {
+        newAmenities.delete(amenity);
+      } else {
+        newAmenities.add(amenity);
+      }
       return { filters: { ...state.filters, amenities: newAmenities } };
     }),
-  clearFilters: () => set({ filters: { bedTypes: new Set(), amenities: new Set() } }),
-  
+  clearFilters: () =>
+    set((state) => ({
+      filters: { ...state.filters, bedTypes: new Set(), amenities: new Set() },
+    })),
   cart: [],
   fetchCart: async () => {
+    const supabase = getSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      set({ cart: [] });
+      return;
+    }
+
     try {
       const response = await fetch('/api/cart');
-      if (!response.ok) throw new Error('Falha ao buscar o carrinho');
+      if (!response.ok) {
+        throw new Error('Falha ao buscar o carrinho');
+      }
       const cart = await response.json();
       set({ cart });
     } catch (error) {
       console.error("fetchCart error:", error);
-      // Opcional: adicionar estado de erro ao store
+      set({ cart: [] });
     }
   },
-  
   addCartItem: async (quarto, vaga, dateRange) => {
+    const supabase = getSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      console.error("Usuário não autenticado. Não é possível adicionar ao carrinho.");
+      // Lançar um erro aqui é uma opção para a UI poder reagir,
+      // por exemplo, redirecionando para o login.
+      throw new Error("Faça login para adicionar itens ao carrinho.");
+    }
+
     if (!dateRange.start || !dateRange.end) {
       console.error("Período de datas inválido para adicionar ao carrinho.");
-      return; // Prevenção de erro
+      // Considerar lançar um erro aqui também para feedback na UI
+      throw new Error("Selecione um período de datas válido.");
     }
     try {
       const response = await fetch('/api/cart', {
@@ -91,17 +115,23 @@ export const useBookingStore = create<BookingState>((set, get) => ({
         }),
       });
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.details || 'Falha ao adicionar item ao carrinho');
+        let errorMessage = 'Falha ao adicionar item ao carrinho';
+        try {
+          const errorData = await response.json();
+          // A API retorna 'Unauthorized' no campo 'error'
+          errorMessage = errorData?.error || errorData?.details || errorMessage;
+        } catch (parseErr) {
+          console.error('Não foi possível parsear o corpo de erro da resposta:', parseErr);
+        }
+        console.error('addCartItem failed', { status: response.status, message: errorMessage });
+        throw new Error(errorMessage);
       }
-      // Atualiza o carrinho após a adição bem-sucedida
       await get().fetchCart();
     } catch (error) {
       console.error("addCartItem error:", error);
-      throw error; // Re-lança para que a UI possa tratar
+      throw error;
     }
   },
-  
   removeCartItem: async (itemId) => {
     try {
       const response = await fetch('/api/cart', {
@@ -110,23 +140,17 @@ export const useBookingStore = create<BookingState>((set, get) => ({
         body: JSON.stringify({ itemId }),
       });
       if (!response.ok) throw new Error('Falha ao remover item do carrinho');
-      // Otimização: remove o item localmente para uma UI mais rápida
       set(state => ({
         cart: state.cart.filter(item => item.id !== itemId)
       }));
     } catch (error) {
       console.error("removeCartItem error:", error);
-      // Se a remoção local falhar, busca novamente do servidor para garantir consistência
       await get().fetchCart();
     }
   },
-
   clearCart: async () => {
     const { cart } = get();
-    // Executa todas as remoções em paralelo para otimização
     await Promise.all(cart.map(item => get().removeCartItem(item.id)));
   },
-
-  // Implementação da função que faltava
   clearCartFromStore: () => set({ cart: [] }),
 }));

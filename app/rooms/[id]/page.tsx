@@ -35,8 +35,17 @@ export default function RoomPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const { dateRange, addCartItem } = useBookingStore();
+  const { dateRange, addCartItem, cart } = useBookingStore();
   const { toast } = useToast();
+
+  const isVagaInCart = (vagaId: string) => {
+    return cart.some(
+      (item) =>
+        item.vaga.id === vagaId &&
+        item.data_inicio === dateRange.start &&
+        item.data_fim === dateRange.end
+    );
+  };
 
   useEffect(() => {
     async function fetchQuarto() {
@@ -80,11 +89,21 @@ export default function RoomPage() {
         description: `A vaga ${vaga.numero_vaga} no Quarto Nº ${quarto.numero} foi adicionada.`,
       });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Não foi possível adicionar o item ao carrinho.",
-      });
+      const errorMessage = error instanceof Error ? error.message : "Não foi possível adicionar o item ao carrinho.";
+      if (errorMessage === "Faça login para adicionar itens ao carrinho.") {
+        router.push(`/login?redirect=/rooms/${roomId}`);
+        toast({
+          variant: "destructive",
+          title: "Login Necessário",
+          description: "Por favor, faça login para adicionar itens ao carrinho.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: errorMessage,
+        });
+      }
     }
   };
 
@@ -182,10 +201,10 @@ export default function RoomPage() {
                     </p>
                     <Button
                       onClick={() => handleAddToCart(vaga)}
-                      disabled={!vaga.available || !dateRange.start || !dateRange.end}
+                      disabled={!vaga.available || !dateRange.start || !dateRange.end || isVagaInCart(vaga.id)}
                       size="sm"
                     >
-                      Adicionar
+                      {isVagaInCart(vaga.id) ? 'No Carrinho' : 'Adicionar'}
                     </Button>
                   </div>
                 </CardContent>

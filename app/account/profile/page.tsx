@@ -2,7 +2,7 @@
 'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ProfileForm } from './profile-form'
+import { ProfileForm } from '../profile-form'
 
 export default function ProfilePage() {
   return (

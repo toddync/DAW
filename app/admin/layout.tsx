@@ -22,7 +22,7 @@ export default function AdminLayout({
           <Link href="/admin">
             <SidebarMenuButton>
               <HomeIcon className="h-6 w-6" />
-              <span className="ml-2">Admin Home</span>
+              <span className="ml-2">Início Admin</span>
             </SidebarMenuButton>
           </Link>
         </SidebarHeader>
@@ -32,7 +32,7 @@ export default function AdminLayout({
               <Link href="/admin/customers">
                 <SidebarMenuButton>
                   <UsersIcon className="h-5 w-5" />
-                  Customers
+                  Clientes
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
@@ -40,7 +40,7 @@ export default function AdminLayout({
               <Link href="/admin/payments">
                 <SidebarMenuButton>
                   <CreditCardIcon className="h-5 w-5" />
-                  Payments
+                  Pagamentos
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
@@ -48,7 +48,7 @@ export default function AdminLayout({
               <Link href="/admin/vacancy">
                 <SidebarMenuButton>
                   <CalendarIcon className="h-5 w-5" />
-                  Vacancy
+                  Vagas
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
@@ -56,7 +56,7 @@ export default function AdminLayout({
               <Link href="/admin/rooms">
                 <SidebarMenuButton>
                   <BuildingIcon className="h-5 w-5" />
-                  Rooms
+                  Quartos
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
@@ -64,7 +64,7 @@ export default function AdminLayout({
               <Link href="/admin/beds">
                 <SidebarMenuButton>
                   <BedIcon className="h-5 w-5" />
-                  Beds
+                  Camas
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
@@ -72,7 +72,7 @@ export default function AdminLayout({
               <Link href="/admin/packages">
                 <SidebarMenuButton>
                   <PackageIcon className="h-5 w-5" />
-                  Packages
+                  Pacotes
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>

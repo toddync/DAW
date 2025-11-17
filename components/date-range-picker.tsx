@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale' // Importar o locale pt-BR
 import { Calendar as CalendarIcon } from 'lucide-react'
 import { DateRange } from 'react-day-picker'
 
@@ -34,14 +35,14 @@ export function DateRangePicker() {
     if (date?.from) {
       const today = startOfDay(new Date())
       if (startOfDay(date.from) < today) {
-        setError('Start date cannot be in the past')
+        setError('A data de início não pode ser no passado')
         return
       }
     }
 
     if (date?.from && date?.to) {
       if (date.from >= date.to) {
-        setError('Start date must be before end date')
+        setError('A data de início deve ser anterior à data de término')
         return
       }
 
@@ -50,7 +51,7 @@ export function DateRangePicker() {
       setDateRange(start, end)
       setError(null)
     } else {
-      // Clear date range if only one date is selected
+      // Limpar o intervalo de datas se apenas uma data for selecionada
       setDateRange(null, null)
       setError(null)
     }
@@ -72,14 +73,14 @@ export function DateRangePicker() {
             {date?.from ? (
               date.to ? (
                 <>
-                  {format(date.from, 'LLL dd, y')} -{' '}
-                  {format(date.to, 'LLL dd, y')}
+                  {format(date.from, 'dd/MM/yyyy', { locale: ptBR })} -{' '}
+                  {format(date.to, 'dd/MM/yyyy', { locale: ptBR })}
                 </>
               ) : (
-                format(date.from, 'LLL dd, y')
+                format(date.from, 'dd/MM/yyyy', { locale: ptBR })
               )
             ) : (
-              <span>Pick a date range</span>
+              <span>Selecione um período</span>
             )}
           </Button>
         </PopoverTrigger>
@@ -91,6 +92,7 @@ export function DateRangePicker() {
             selected={date}
             onSelect={setDate}
             numberOfMonths={2}
+            locale={ptBR} // Definir o locale para o calendário
           />
         </PopoverContent>
       </Popover>

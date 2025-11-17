@@ -38,10 +38,10 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">
             <Link href="/" className="font-bold text-lg text-foreground">
-              Urban Hostel
+              Hostel Santa Teresa
             </Link>
           </CardTitle>
-          <p className="text-muted-foreground">Login to your account</p>
+          <p className="text-muted-foreground">Acesse sua conta</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin}>
@@ -51,14 +51,14 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="m@exemplo.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Senha</Label>
                 <Input
                   id="password"
                   type="password"
@@ -69,12 +69,12 @@ export default function LoginPage() {
               </div>
               {error && <p className="text-destructive text-sm">{error}</p>}
               <Button type="submit" className="w-full">
-                Login
+                Entrar
               </Button>
               <div className="text-center text-sm text-muted-foreground">
-                Don&apos;t have an account?{' '}
+                Não tem uma conta?{' '}
                 <Link href="/signup" className="underline">
-                  Sign Up
+                  Cadastre-se
                 </Link>
               </div>
             </div>

@@ -23,6 +23,7 @@ const CartSidebar = dynamic(() => import('./cart-sidebar').then(mod => mod.CartS
   loading: () => (
     <Button variant="outline" size="icon" className="relative" disabled>
       <ShoppingCart className="h-5 w-5" />
+      <span className="sr-only">Carregando carrinho</span>
     </Button>
   ),
 })
@@ -64,7 +65,7 @@ export function Header() {
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <span className="text-primary-foreground font-bold">H</span>
           </div>
-          <span className="font-bold text-lg text-foreground">Urban Hostel</span>
+          <span className="font-bold text-lg text-foreground">Hostel Santa Teresa</span>
         </Link>
 
         <nav className="flex items-center gap-4 md:gap-6">
@@ -82,7 +83,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="rounded-full">
                   <UserIcon className="h-5 w-5" />
-                  <span className="sr-only">Toggle user menu</span>
+                  <span className="sr-only">Abrir menu do usuário</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

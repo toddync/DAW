@@ -74,8 +74,8 @@ export async function addItemCarrinho(usuarioId: string, item: ItemParaAdicionar
         .single();
 
     if (error) {
-        console.error("Erro ao adicionar item ao carrinho:", error);
-        throw new Error(error.message);
+        console.error("Erro detalhado ao adicionar item ao carrinho:", error);
+        throw new Error("Ocorreu um erro ao adicionar o item ao carrinho. Verifique os dados e tente novamente.");
     }
 
     return data as CarrinhoItem;

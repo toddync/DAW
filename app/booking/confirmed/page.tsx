@@ -81,7 +81,7 @@ function ConfirmationContent() {
             <CardHeader className="items-center text-center">
                 <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
                 <CardTitle className="text-3xl">Reserva Confirmada!</CardTitle>
-                <CardDescription>Obrigado por escolher o Urban Hostel. Sua reserva está garantida.</CardDescription>
+                <CardDescription>Obrigado por escolher o Hostel Santa Teresa. Sua reserva está garantida.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="p-4 border rounded-lg bg-muted/50 space-y-2">
