@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { PlusCircle, Loader2 } from "lucide-react"
 import { PackageForm } from "./package-form"
 import { useToast } from "@/components/ui/use-toast"
+import { format } from "date-fns"
 
 export default function PackagesAdminPage() {
   const [pacoteQuartos, setPacoteQuartos] = useState<PacoteQuarto[]>([])
@@ -90,7 +91,12 @@ export default function PackagesAdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formattedValues),
       });
-      if (!response.ok) throw new Error(`Falha ao ${isEditing ? 'atualizar' : 'criar'} o pacote de quarto.`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || errorData.error || `Falha ao ${isEditing ? 'atualizar' : 'criar'} o pacote de quarto.`);
+      }
+
       toast({ title: "Sucesso", description: `Pacote de quarto ${isEditing ? 'atualizado' : 'criado'}.` });
       setIsFormOpen(false);
       await fetchPacoteQuartos();
@@ -136,8 +142,8 @@ export default function PackagesAdminPage() {
             <DialogTitle>{selectedPacoteQuarto?.id ? 'Editar Pacote de Quarto' : 'Criar Novo Pacote de Quarto'}</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <PackageForm 
-              initialData={selectedPacoteQuarto ?? undefined} 
+            <PackageForm
+              initialData={selectedPacoteQuarto ?? undefined}
               onSubmit={onSubmit}
               isSubmitting={isSubmitting}
             />

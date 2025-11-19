@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ProfileForm } from '../profile-form' 
+import { ProfileForm } from '../profile-form'
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -13,8 +13,8 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
         router.push('/login?redirect=/account/onboarding')
       }
     }

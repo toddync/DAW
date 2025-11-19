@@ -51,7 +51,7 @@ export async function getQuartosDisponiveis(
       .order('numero_vaga');
 
     if (vagasError) throw new Error(`Error fetching vagas: ${vagasError.message}`);
-    if (!vagas) return quartos as QuartoComVagas[]; // Retorna quartos sem vagas se não houver
+    if (!vagas) return quartos.map(q => ({ ...q, vagas: [] })) as unknown as QuartoComVagas[];
 
     let unavailableVagaIds = new Set<string>();
 
@@ -63,10 +63,30 @@ export async function getQuartosDisponiveis(
         .select('vaga_id')
         .lt('data_entrada', end) // Reservation starts before the query period ends
         .gt('data_saida', start); // Reservation ends after the query period starts
-        
+
       if (bookingsError) throw new Error(`Error fetching bookings: ${bookingsError.message}`);
 
       unavailableVagaIds = new Set(conflictingReservas.map(r => r.vaga_id));
+
+      // Check for rooms closed by packages
+      const { data: closedPackages, error: packagesError } = await supabase
+        .from('pacote_quartos')
+        .select('quarto_id')
+        .eq('fechar_quarto', true)
+        .lt('data_inicio', end)
+        .gt('data_fim', start);
+
+      if (packagesError) throw new Error(`Error fetching packages: ${packagesError.message}`);
+
+      if (closedPackages && closedPackages.length > 0) {
+        const closedRoomIds = new Set(closedPackages.map(p => p.quarto_id));
+        // Mark all beds in closed rooms as unavailable
+        vagas.forEach(vaga => {
+          if (closedRoomIds.has(vaga.quarto_id)) {
+            unavailableVagaIds.add(vaga.id);
+          }
+        });
+      }
     }
 
     // 4. Structure the response
@@ -84,7 +104,7 @@ export async function getQuartosDisponiveis(
       };
     });
 
-    return quartosComVagas as QuartoComVagas[];
+    return quartosComVagas as unknown as QuartoComVagas[];
 
   } catch (error) {
     console.error("getQuartosDisponiveis Service Error:", error);
@@ -147,7 +167,7 @@ export async function getQuartoById(
         .in('vaga_id', vagas.map(v => v.id)) // Only check for beds in this room
         .lt('data_entrada', end)
         .gt('data_saida', start);
-        
+
       if (bookingsError) throw new Error(`Error fetching bookings: ${bookingsError.message}`);
       unavailableVagaIds = new Set(conflictingReservas.map(r => r.vaga_id));
     }
@@ -161,7 +181,7 @@ export async function getQuartoById(
     return {
       ...quarto,
       vagas: vagasComDisponibilidade,
-    } as QuartoComVagas;
+    } as unknown as QuartoComVagas;
 
   } catch (error) {
     console.error(`getQuartoById Service Error: ${error}`);

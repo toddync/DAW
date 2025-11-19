@@ -1,3 +1,4 @@
+// app/admin/rooms/columns.tsx
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
@@ -11,7 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ArrowUpDown, MoreHorizontal } from "lucide-react"
+import { ArrowUpDown, MoreHorizontal, Pencil, Trash } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 // As ações agora recebem handlers como props
 interface CellActionsProps {
@@ -32,6 +34,7 @@ const CellActions = ({ quarto, onEdit, onDelete }: CellActionsProps) => {
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Ações</DropdownMenuLabel>
         <DropdownMenuItem onClick={() => onEdit(quarto)}>
+          <Pencil className="mr-2 h-4 w-4" />
           Editar
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -39,6 +42,7 @@ const CellActions = ({ quarto, onEdit, onDelete }: CellActionsProps) => {
           className="text-destructive"
           onClick={() => onDelete(quarto)}
         >
+          <Trash className="mr-2 h-4 w-4" />
           Deletar
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -46,36 +50,40 @@ const CellActions = ({ quarto, onEdit, onDelete }: CellActionsProps) => {
   )
 }
 
-// A exportação de colunas agora é uma função que aceita os handlers
 export const getColumns = (
-    onEdit: (quarto: Quarto) => void,
-    onDelete: (quarto: Quarto) => void
+  onEdit: (quarto: Quarto) => void,
+  onDelete: (quarto: Quarto) => void
 ): ColumnDef<Quarto>[] => [
-  {
-    accessorKey: "numero",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Número
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      )
+    {
+      accessorKey: "numero",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Número
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
     },
-  },
-  {
-    accessorKey: "tipo_quarto",
-    header: "Tipo",
-  },
-  {
-    accessorKey: "capacidade",
-    header: "Capacidade",
-  },
-  {
-    accessorKey: "preco_base",
-    header: ({ column }) => {
+    {
+      accessorKey: "tipo_quarto",
+      header: "Tipo",
+      cell: ({ row }) => {
+        const tipo = row.getValue("tipo_quarto") as string;
+        return <span className="capitalize">{tipo.replace('_', ' ')}</span>
+      }
+    },
+    {
+      accessorKey: "capacidade",
+      header: "Capacidade",
+      cell: ({ row }) => <div className="text-center">{row.getValue("capacidade")}</div>
+    },
+    {
+      accessorKey: "preco_base",
+      header: ({ column }) => {
         return (
           <div className="text-right">
             <Button
@@ -87,26 +95,31 @@ export const getColumns = (
             </Button>
           </div>
         )
+      },
+      cell: ({ row }) => {
+        const amount = parseFloat(row.getValue("preco_base"))
+        const formatted = new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        }).format(amount)
+
+        return <div className="text-right font-medium">{formatted}</div>
+      },
     },
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("preco_base"))
-      const formatted = new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-      }).format(amount)
- 
-      return <div className="text-right font-medium">{formatted}</div>
+    {
+      accessorKey: "ativo",
+      header: "Status",
+      cell: ({ row }) => {
+        const ativo = row.getValue("ativo") as boolean;
+        return (
+          <Badge variant={ativo ? "default" : "secondary"}>
+            {ativo ? "Ativo" : "Inativo"}
+          </Badge>
+        );
+      }
     },
-  },
-  {
-    accessorKey: "ativo",
-    header: "Ativo",
-    cell: ({ row }) => {
-        return row.getValue("ativo") ? "Sim" : "Não";
-    }
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => <CellActions quarto={row.original} onEdit={onEdit} onDelete={onDelete} />,
-  },
-]
+    {
+      id: "actions",
+      cell: ({ row }) => <CellActions quarto={row.original} onEdit={onEdit} onDelete={onDelete} />,
+    },
+  ]

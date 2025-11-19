@@ -55,6 +55,7 @@ export interface Vaga {
   observacoes?: string | null;
   // Propriedade adicionada pela API
   available?: boolean;
+  quartos?: Quarto;
 }
 
 // Interface para a tabela 'quartos'
@@ -95,14 +96,14 @@ export interface Reserva {
 
 // Interface para a tabela 'carrinho_itens'
 export interface CarrinhoItem {
-    id: string;
-    usuario_id: string;
-    vaga_id: string;
-    data_inicio: string;
-    data_fim: string;
-    created_at: string;
-    // Objeto aninhado retornado pela API
-    vaga?: Vaga & { quarto?: Quarto };
+  id: string;
+  usuario_id: string;
+  vaga_id: string;
+  data_inicio: string;
+  data_fim: string;
+  created_at: string;
+  // Objeto aninhado retornado pela API
+  vaga?: Vaga & { quarto?: Quarto };
 }
 
 // Interface para a tabela 'pacotes' (revisada)
@@ -127,5 +128,36 @@ export interface PacoteQuarto {
   updated_at: string;
   // Opcional: para incluir dados do pacote e do quarto ao buscar
   pacotes?: Pacote;
+  quartos?: Quarto;
+}
+
+// Interface para a tabela 'pagamentos'
+export interface Pagamento {
+  id: string;
+  reserva_id: string;
+  parcela_numero: number;
+  valor_parcela: number;
+  metodo_pagamento: string;
+  status: string;
+  data_vencimento?: string | null;
+  data_pagamento?: string | null;
+  gateway_pagamento?: string | null;
+  id_transacao_gateway?: string | null;
+  ultimos_digitos?: string | null;
+  bandeira_cartao?: string | null;
+  created_at: string;
+  updated_at: string;
+  reservas?: Reserva & { usuarios?: Usuario };
+}
+
+// Interface para a tabela 'controle_ocupacao'
+export interface ControleOcupacao {
+  id: string;
+  quarto_id: string;
+  data_referencia: string;
+  vagas_ocupadas: number;
+  vagas_disponiveis: number;
+  created_at: string;
+  updated_at: string;
   quartos?: Quarto;
 }

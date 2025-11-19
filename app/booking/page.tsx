@@ -71,6 +71,34 @@ export default function BookingPage() {
     fetchQuartos()
   }, [dateRange])
 
+  // Effect to handle 'pacote' query param
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pacoteId = params.get('pacote');
+
+    if (pacoteId) {
+      // Fetch package details to set dates and filter
+      async function fetchPackageDetails() {
+        try {
+          const response = await fetch(`/api/packages/${pacoteId}`);
+          if (response.ok) {
+            const pacote = await response.json();
+            // Update store with package dates
+            useBookingStore.setState({
+              dateRange: {
+                start: pacote.data_inicio,
+                end: pacote.data_fim
+              }
+            });
+          }
+        } catch (error) {
+          console.error("Failed to fetch package details", error);
+        }
+      }
+      fetchPackageDetails();
+    }
+  }, [])
+
   useEffect(() => {
     let filtered = quartos
 
