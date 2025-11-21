@@ -2,25 +2,31 @@
 
 import { useEffect, useState } from "react"
 import { ControleOcupacao } from "@/lib/types"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from "date-fns"
+import { format, startOfMonth, endOfMonth } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 
 export default function VacancyAdminPage() {
   const [ocupacao, setOcupacao] = useState<ControleOcupacao[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [date, setDate] = useState<Date | undefined>(new Date())
 
   const fetchOcupacao = async () => {
+    if (!date) return
     try {
       setLoading(true)
-      const start = startOfMonth(currentMonth)
-      const end = endOfMonth(currentMonth)
+      // Fetch for the whole month to allow easy switching, or just the day?
+      // Let's fetch for the selected day to be precise as per requirement "defaulting to the current day"
+      // Actually, fetching the whole month is better for the calendar indicators if we wanted them,
+      // but for now let's just fetch the specific day to be lightweight and simple.
+      // Wait, the API expects a range. Let's fetch the whole month of the selected date
+      // so we don't spam the API if the user clicks around in the same month.
+      const start = startOfMonth(date)
+      const end = endOfMonth(date)
 
       const response = await fetch(`/api/admin/vacancy?inicio=${start.toISOString()}&fim=${end.toISOString()}`)
       if (!response.ok) throw new Error("Falha ao carregar dados de ocupação.")
@@ -35,104 +41,128 @@ export default function VacancyAdminPage() {
 
   useEffect(() => {
     fetchOcupacao()
-  }, [currentMonth])
+  }, [date?.getMonth(), date?.getFullYear(), date]) // Refetch when month changes
 
-  const daysInMonth = eachDayOfInterval({
-    start: startOfMonth(currentMonth),
-    end: endOfMonth(currentMonth),
+  // Helper to parse date string to local midnight to avoid timezone issues
+  const parseDateToLocal = (dateString: string) => {
+    // Assuming dateString is ISO like '2023-10-27T00:00:00.000Z' or '2023-10-27'
+    const datePart = dateString.split('T')[0]
+    const [year, month, day] = datePart.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+
+  // Filter occupancy for the selected date
+  const selectedDateStr = date ? format(date, 'yyyy-MM-dd') : ''
+  const ocupacaoDoDia = ocupacao.filter(item => {
+    const itemDate = parseDateToLocal(item.data_referencia)
+    return format(itemDate, 'yyyy-MM-dd') === selectedDateStr
   })
 
-  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1))
-  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1))
+  // Calculate modifiers for the calendar
+  const modifiers = {
+    booked: [] as Date[],
+    partially_booked: [] as Date[],
+    free: [] as Date[],
+  }
 
-  // Agrupar ocupação por quarto
-  const ocupacaoPorQuarto = ocupacao.reduce((acc, curr) => {
-    const quartoId = curr.quarto_id
-    if (!acc[quartoId]) {
-      acc[quartoId] = {
-        quarto: curr.quartos,
-        dias: {}
-      }
+  const occupancyByDate = ocupacao.reduce((acc, item) => {
+    const itemDate = parseDateToLocal(item.data_referencia)
+    const dateStr = format(itemDate, 'yyyy-MM-dd')
+
+    if (!acc[dateStr]) {
+      acc[dateStr] = { total: 0, occupied: 0, available: 0 }
     }
-    acc[quartoId].dias[format(new Date(curr.data_referencia), 'yyyy-MM-dd')] = curr
+    acc[dateStr].total += item.vagas_ocupadas + item.vagas_disponiveis
+    acc[dateStr].occupied += item.vagas_ocupadas
+    acc[dateStr].available += item.vagas_disponiveis
     return acc
-  }, {} as Record<string, { quarto: any, dias: Record<string, ControleOcupacao> }>)
+  }, {} as Record<string, { total: number, occupied: number, available: number }>)
+
+  Object.entries(occupancyByDate).forEach(([dateStr, stats]) => {
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const dateObj = new Date(year, month - 1, day)
+
+    if (stats.available === 0 && stats.total > 0) {
+      modifiers.booked.push(dateObj)
+    } else if (stats.occupied > 0) {
+      modifiers.partially_booked.push(dateObj)
+    } else {
+      modifiers.free.push(dateObj)
+    }
+  })
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Controle de Ocupação</CardTitle>
-          <CardDescription>Visualize a disponibilidade dos quartos.</CardDescription>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" onClick={prevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="font-medium min-w-[150px] text-center capitalize">
-            {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
-          </span>
-          <Button variant="outline" size="icon" onClick={nextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 overflow-auto">
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : error ? (
-          <p className="text-destructive text-center">{error}</p>
-        ) : (
-          <div className="min-w-[800px]">
-            <div className="grid grid-cols-[200px_1fr] border-b">
-              <div className="p-2 font-medium">Quarto</div>
-              <div className="grid" style={{ gridTemplateColumns: `repeat(${daysInMonth.length}, minmax(40px, 1fr))` }}>
-                {daysInMonth.map((day) => (
-                  <div key={day.toString()} className="p-2 text-center text-xs border-l">
-                    {format(day, 'dd')}
-                    <br />
-                    {format(day, 'EEE', { locale: ptBR })}
-                  </div>
-                ))}
+    <div className="flex flex-col gap-6 h-full">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Controle de Ocupação</h1>
+        <p className="text-muted-foreground">Selecione uma data para visualizar a disponibilidade.</p>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-6 items-start">
+        <Card className="w-full md:w-auto">
+          <CardContent className="p-0">
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={setDate}
+              className="rounded-md border"
+              locale={ptBR}
+              modifiers={modifiers}
+              modifiersClassNames={{
+                booked: "bg-red-100 text-red-900 hover:bg-red-200 font-bold",
+                partially_booked: "bg-yellow-100 text-yellow-900 hover:bg-yellow-200 font-bold",
+                free: "bg-green-100 text-green-900 hover:bg-green-200 font-bold",
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="flex-1 w-full">
+          <CardHeader>
+            <CardTitle>
+              Ocupação para {date ? format(date, "d 'de' MMMM 'de' yyyy", { locale: ptBR }) : 'Selecione uma data'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            </div>
-            {Object.values(ocupacaoPorQuarto).map(({ quarto, dias }) => (
-              <div key={quarto?.id || 'unknown'} className="grid grid-cols-[200px_1fr] border-b hover:bg-muted/50">
-                <div className="p-2 flex flex-col justify-center">
-                  <span className="font-medium">{quarto?.numero || 'N/A'}</span>
-                  <span className="text-xs text-muted-foreground">{quarto?.tipo_quarto}</span>
-                </div>
-                <div className="grid" style={{ gridTemplateColumns: `repeat(${daysInMonth.length}, minmax(40px, 1fr))` }}>
-                  {daysInMonth.map((day) => {
-                    const dateKey = format(day, 'yyyy-MM-dd')
-                    const dadosDia = dias[dateKey]
-                    const ocupacaoPercent = dadosDia
-                      ? (dadosDia.vagas_ocupadas / (dadosDia.vagas_ocupadas + dadosDia.vagas_disponiveis)) * 100
-                      : 0
+            ) : error ? (
+              <p className="text-destructive text-center">{error}</p>
+            ) : ocupacaoDoDia.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Nenhum dado encontrado para esta data.</p>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {ocupacaoDoDia.map((item) => {
+                  const total = item.vagas_ocupadas + item.vagas_disponiveis
+                  const percent = total > 0 ? (item.vagas_ocupadas / total) * 100 : 0
 
-                    let bgClass = "bg-green-100 text-green-800"
-                    if (ocupacaoPercent >= 100) bgClass = "bg-red-100 text-red-800"
-                    else if (ocupacaoPercent >= 50) bgClass = "bg-yellow-100 text-yellow-800"
-                    else if (!dadosDia) bgClass = "bg-gray-50"
+                  let statusColor = "bg-green-500"
+                  if (percent >= 100) statusColor = "bg-red-500"
+                  else if (percent >= 50) statusColor = "bg-yellow-500"
 
-                    return (
-                      <div
-                        key={day.toString()}
-                        className={cn("p-1 text-center text-xs border-l flex items-center justify-center", bgClass)}
-                        title={dadosDia ? `Ocupadas: ${dadosDia.vagas_ocupadas}, Livres: ${dadosDia.vagas_disponiveis}` : 'Sem dados'}
-                      >
-                        {dadosDia ? dadosDia.vagas_disponiveis : '-'}
+                  return (
+                    <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="space-y-1">
+                        <p className="font-medium leading-none">Quarto {item.quartos?.numero}</p>
+                        <p className="text-sm text-muted-foreground">{item.quartos?.tipo_quarto}</p>
                       </div>
-                    )
-                  })}
-                </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-sm font-medium">{item.vagas_disponiveis} vagas livres</p>
+                          <p className="text-xs text-muted-foreground">{item.vagas_ocupadas} ocupadas</p>
+                        </div>
+                        <div className={cn("w-2 h-2 rounded-full", statusColor)} />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }
