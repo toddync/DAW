@@ -1,9 +1,16 @@
-import { createClient } from "@/lib/supabase-server";
+import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { Pagamento } from "@/lib/types";
 
-export async function getTodosPagamentos(): Promise<Pagamento[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+export async function getTodosPagamentos(
+  page: number = 1,
+  limit: number = 20
+): Promise<{ data: Pagamento[], total: number }> {
+  const supabase = await createSupabaseAdmin();
+  
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  const { data, error, count } = await supabase
     .from('pagamentos')
     .select(`
       *,
@@ -15,19 +22,20 @@ export async function getTodosPagamentos(): Promise<Pagamento[]> {
           email
         )
       )
-    `)
-    .order('created_at', { ascending: false });
+    `, { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, to);
 
   if (error) {
     console.error("Erro ao buscar pagamentos:", error);
     throw new Error("Falha ao buscar pagamentos.");
   }
 
-  return data;
+  return { data: data || [], total: count || 0 };
 }
 
 export async function getPagamentoById(id: string): Promise<Pagamento | null> {
-  const supabase = await createClient();
+  const supabase = await createSupabaseAdmin();
   const { data, error } = await supabase
     .from('pagamentos')
     .select(`
@@ -56,7 +64,7 @@ export async function getPagamentoById(id: string): Promise<Pagamento | null> {
 }
 
 export async function updatePagamentoStatus(id: string, status: string): Promise<Pagamento> {
-  const supabase = await createClient();
+  const supabase = await createSupabaseAdmin();
   const { data, error } = await supabase
     .from('pagamentos')
     .update({ status })

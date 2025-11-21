@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Vaga } from "@/lib/types"
 import { getColumns } from "./columns"
 import { DataTable } from "@/components/ui/data-table"
@@ -8,9 +8,17 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { PlusCircle, Loader2 } from "lucide-react"
+import { PlusCircle, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import { BedForm } from "./bed-form"
 import { useToast } from "@/components/ui/use-toast"
+
+interface PaginatedResponse {
+  data: Vaga[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
 
 export default function BedsAdminPage() {
   const [vagas, setVagas] = useState<Vaga[]>([])
@@ -20,25 +28,36 @@ export default function BedsAdminPage() {
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
   const [selectedVaga, setSelectedVaga] = useState<Partial<Vaga> | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  
   const { toast } = useToast()
 
-  const fetchVagas = async () => {
+  const fetchVagas = useCallback(async (currentPage: number = 1) => {
     try {
       setLoading(true)
-      const response = await fetch("/api/admin/beds")
+      const response = await fetch(`/api/admin/beds?page=${currentPage}&limit=20`, { cache: 'no-store' })
       if (!response.ok) throw new Error("Falha ao carregar as vagas.")
-      const data = await response.json()
-      setVagas(data)
+      
+      const data: PaginatedResponse = await response.json()
+      
+      setVagas(data.data)
+      setPage(data.page)
+      setTotalPages(data.totalPages)
+      setTotal(data.total)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ocorreu um erro.")
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    fetchVagas()
-  }, [])
+    fetchVagas(page)
+  }, [page, fetchVagas])
 
   const handleCreate = () => {
     setSelectedVaga(null)
@@ -62,7 +81,7 @@ export default function BedsAdminPage() {
       const response = await fetch(`/api/admin/beds/${selectedVaga.id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error("Falha ao deletar a vaga.");
       toast({ title: "Sucesso", description: "Vaga deletada." });
-      await fetchVagas();
+      await fetchVagas(page);
     } catch (err) {
       toast({ variant: "destructive", title: "Erro", description: err instanceof Error ? err.message : "Ocorreu um erro." });
     } finally {
@@ -86,7 +105,7 @@ export default function BedsAdminPage() {
       if (!response.ok) throw new Error(`Falha ao ${isEditing ? 'atualizar' : 'criar'} a vaga.`);
       toast({ title: "Sucesso", description: `Vaga ${isEditing ? 'atualizada' : 'criada'}.` });
       setIsFormOpen(false);
-      await fetchVagas();
+      await fetchVagas(page);
     } catch (err) {
       toast({ variant: "destructive", title: "Erro", description: err instanceof Error ? err.message : "Ocorreu um erro." });
     } finally {
@@ -117,7 +136,38 @@ export default function BedsAdminPage() {
           ) : error ? (
             <p className="text-destructive text-center">{error}</p>
           ) : (
-            <DataTable columns={columns} data={vagas} />
+            <>
+              <DataTable columns={columns} data={vagas} />
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando {vagas.length} de {total} registros (Página {page} de {totalPages})
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                    >
+                      Próxima
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

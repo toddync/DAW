@@ -1,41 +1,31 @@
-// app/api/admin/quartos/route.ts
-import { createClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 import { getTodosQuartos, upsertQuarto } from '@/lib/services/admin/quartosAdminService';
-import { getUsuarioById } from '@/lib/services/usuariosService';
+import { handleAPIError } from '@/lib/api-error-handler';
 
-/**
- * Middleware de segurança para verificar se o usuário é um administrador.
- */
-async function isAdmin(request: NextRequest): Promise<{ user: any; error?: NextResponse }> {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-        return { user: null, error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-    }
-
-    const perfil = await getUsuarioById(user.id);
-    if (perfil?.role !== 'admin') {
-        return { user: null, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
-    }
-
-    return { user };
-}
+export const dynamic = 'force-dynamic';
 
 /**
  * API endpoint para buscar todos os quartos (Admin).
  */
 export async function GET(request: NextRequest) {
-    const { error } = await isAdmin(request);
-    if (error) return error;
-
     try {
-        const quartos = await getTodosQuartos();
-        return NextResponse.json(quartos);
+        const { searchParams } = new URL(request.url);
+        const page = parseInt(searchParams.get('page') || '1');
+        const limit = parseInt(searchParams.get('limit') || '20');
+
+        const { data, total } = await getTodosQuartos(page, limit);
+        
+        const totalPages = Math.ceil(total / limit);
+
+        return NextResponse.json({
+            data,
+            page,
+            limit,
+            total,
+            totalPages
+        });
     } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
-        return NextResponse.json({ error: 'Falha ao buscar quartos.', details: errorMessage }, { status: 500 });
+        return handleAPIError(err);
     }
 }
 
@@ -43,16 +33,12 @@ export async function GET(request: NextRequest) {
  * API endpoint para criar um novo quarto (Admin).
  */
 export async function POST(request: NextRequest) {
-    const { error } = await isAdmin(request);
-    if (error) return error;
-
     try {
         const body = await request.json();
         // Adicionar validação com Zod seria o ideal aqui
         const novoQuarto = await upsertQuarto(body);
         return NextResponse.json(novoQuarto, { status: 201 });
     } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
-        return NextResponse.json({ error: 'Falha ao criar quarto.', details: errorMessage }, { status: 400 });
+        return handleAPIError(err);
     }
 }

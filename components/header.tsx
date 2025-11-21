@@ -75,6 +75,12 @@ export function Header() {
           >
             Quartos
           </Link>
+          <Link
+            href="/packages"
+            className={`text-sm font-medium transition-colors ${pathname === '/packages' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            Pacotes
+          </Link>
           
           <CartSidebar />
 

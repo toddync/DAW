@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import {
     Form,
@@ -23,29 +22,22 @@ import {
 import { Usuario } from "@/lib/types"
 import { Loader2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
-
-const formSchema = z.object({
-    nome: z.string().min(1, "Nome é obrigatório"),
-    email: z.string().email("Email inválido"),
-    role: z.string(),
-    telefone: z.string().optional(),
-    ativo: z.boolean(),
-})
+import { customerUpdateSchema, CustomerUpdateInput } from "@/lib/schemas/customer"
 
 interface CustomerFormProps {
     initialData: Usuario
-    onSubmit: (values: z.infer<typeof formSchema>) => void
+    onSubmit: (values: CustomerUpdateInput) => void
     isSubmitting: boolean
 }
 
 export function CustomerForm({ initialData, onSubmit, isSubmitting }: CustomerFormProps) {
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
+    const form = useForm<CustomerUpdateInput>({
+        resolver: zodResolver(customerUpdateSchema),
         defaultValues: {
             nome: initialData.nome || "",
             email: initialData.email || "",
-            role: initialData.role || "client",
-            telefone: initialData.telefone || "",
+            role: (initialData.role as "usuario" | "admin") || "usuario",
+            telefone: initialData.telefone || "",  // Convert null to empty string
             ativo: initialData.ativo,
         },
     })

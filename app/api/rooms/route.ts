@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getQuartosDisponiveis } from '@/lib/services/quartosService';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * API endpoint para buscar quartos e sua disponibilidade.
  * Extrai os parâmetros de data do request e chama a camada de serviço.

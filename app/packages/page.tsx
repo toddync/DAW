@@ -6,6 +6,9 @@ import { CalendarIcon, UsersIcon, CheckIcon } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { AddPackageToCartButton } from "./add-package-button";
+
+export const dynamic = 'force-dynamic';
 
 async function getPacotes() {
     const supabase = await createClient();
@@ -91,11 +94,11 @@ export default async function PackagesPage() {
                                 </div>
                             </CardContent>
                             <CardFooter>
-                                <Button className="w-full" asChild>
-                                    <Link href={`/booking?pacote=${pacote.id}`}>
-                                        Reservar Agora
-                                    </Link>
-                                </Button>
+                                <AddPackageToCartButton
+                                    pacoteQuartoId={pacote.id}
+                                    dataInicio={pacote.data_inicio}
+                                    dataFim={pacote.data_fim}
+                                />
                             </CardFooter>
                         </Card>
                     ))}

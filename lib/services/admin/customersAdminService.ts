@@ -1,23 +1,38 @@
-import { createClient } from "@/lib/supabase-server";
+import { createSupabaseAdmin } from '@/lib/supabase-admin';
 import { Usuario } from "@/lib/types";
 
-export async function getTodosUsuarios(): Promise<Usuario[]> {
-    const supabase = await createClient();
-    const { data, error } = await supabase
+export async function getTodosUsuarios(
+    page: number = 1,
+    limit: number = 20,
+    search: string = ''
+): Promise<{ data: Usuario[], total: number }> {
+    const supabase = await createSupabaseAdmin();
+    
+    let query = supabase
         .from('usuarios')
-        .select('*')
-        .order('nome', { ascending: true });
+        .select('*', { count: 'exact' });
+
+    if (search) {
+        query = query.or(`nome.ilike.%${search}%,email.ilike.%${search}%`);
+    }
+
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    const { data, error, count } = await query
+        .order('nome', { ascending: true })
+        .range(from, to);
 
     if (error) {
         console.error("Erro ao buscar usuários:", error);
         throw new Error("Falha ao buscar usuários.");
     }
 
-    return data;
+    return { data: data || [], total: count || 0 };
 }
 
 export async function getUsuarioById(id: string): Promise<Usuario | null> {
-    const supabase = await createClient();
+    const supabase = await createSupabaseAdmin();
     const { data, error } = await supabase
         .from('usuarios')
         .select('*')
@@ -25,6 +40,9 @@ export async function getUsuarioById(id: string): Promise<Usuario | null> {
         .single();
 
     if (error) {
+        if (error.code === 'PGRST116') {
+            return null;
+        }
         console.error(`Erro ao buscar usuário com ID ${id}:`, error);
         throw new Error("Falha ao buscar usuário.");
     }
@@ -33,7 +51,7 @@ export async function getUsuarioById(id: string): Promise<Usuario | null> {
 }
 
 export async function updateUsuario(id: string, updates: Partial<Usuario>): Promise<Usuario> {
-    const supabase = await createClient();
+    const supabase = await createSupabaseAdmin();
     const { data, error } = await supabase
         .from('usuarios')
         .update(updates)
