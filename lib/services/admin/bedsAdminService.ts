@@ -1,9 +1,16 @@
-import { createClient } from "@/lib/supabase-server";
+import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { Vaga } from "@/lib/types";
 
-export async function getTodasVagas(): Promise<Vaga[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+export async function getTodasVagas(
+  page: number = 1,
+  limit: number = 20
+): Promise<{ data: Vaga[], total: number }> {
+  const supabase = await createSupabaseAdmin();
+  
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  const { data, error, count } = await supabase
     .from('vagas')
     .select(`
       *,
@@ -12,20 +19,21 @@ export async function getTodasVagas(): Promise<Vaga[]> {
         numero,
         tipo_quarto
       )
-    `)
+    `, { count: 'exact' })
     .order('quarto_id', { ascending: true })
-    .order('numero_vaga', { ascending: true });
+    .order('numero_vaga', { ascending: true })
+    .range(from, to);
 
   if (error) {
     console.error("Erro ao buscar todas as vagas:", error);
     throw new Error("Falha ao buscar vagas.");
   }
 
-  return data;
+  return { data: data || [], total: count || 0 };
 }
 
 export async function getVagaById(id: string): Promise<Vaga | null> {
-  const supabase = await createClient();
+  const supabase = await createSupabaseAdmin();
   const { data, error } = await supabase
     .from('vagas')
     .select(`
@@ -40,6 +48,9 @@ export async function getVagaById(id: string): Promise<Vaga | null> {
     .single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      return null;
+    }
     console.error(`Erro ao buscar vaga com ID ${id}:`, error);
     throw new Error("Falha ao buscar vaga.");
   }
@@ -48,7 +59,7 @@ export async function getVagaById(id: string): Promise<Vaga | null> {
 }
 
 export async function upsertVaga(vaga: Partial<Vaga>): Promise<Vaga> {
-  const supabase = await createClient();
+  const supabase = await createSupabaseAdmin();
   const { data, error } = await supabase
     .from('vagas')
     .upsert(vaga)
@@ -64,7 +75,7 @@ export async function upsertVaga(vaga: Partial<Vaga>): Promise<Vaga> {
 }
 
 export async function deleteVaga(id: string): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await createSupabaseAdmin();
   const { error } = await supabase
     .from('vagas')
     .delete()

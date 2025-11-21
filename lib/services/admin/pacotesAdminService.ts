@@ -1,5 +1,5 @@
 // lib/services/admin/pacotesAdminService.ts
-import { createClient } from '@/lib/supabase-server';
+import { createSupabaseAdmin } from '@/lib/supabase-admin';
 import { Pacote, PacoteQuarto } from '@/lib/types';
 
 /**
@@ -7,7 +7,7 @@ import { Pacote, PacoteQuarto } from '@/lib/types';
  * @returns Uma lista de pacotes.
  */
 export async function getTodosPacotesTemplates(): Promise<Pacote[]> {
-  const supabase = await createClient();
+  const supabase = await createSupabaseAdmin();
   const { data, error } = await supabase
     .from('pacotes')
     .select('*')
@@ -24,22 +24,30 @@ export async function getTodosPacotesTemplates(): Promise<Pacote[]> {
  * Busca todas as entradas de pacote_quartos do banco de dados, incluindo dados aninhados.
  * @returns Uma lista de PacoteQuarto.
  */
-export async function getTodosPacoteQuartos(): Promise<PacoteQuarto[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+export async function getTodosPacoteQuartos(
+  page: number = 1,
+  limit: number = 20
+): Promise<{ data: PacoteQuarto[], total: number }> {
+  const supabase = await createSupabaseAdmin();
+  
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  const { data, error, count } = await supabase
     .from('pacote_quartos')
     .select(`
       *,
       pacotes (id, nome, descricao),
       quartos (id, numero, tipo_quarto, capacidade, preco_base)
-    `)
-    .order('created_at', { ascending: false });
+    `, { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, to);
 
   if (error) {
     console.error('Erro ao buscar pacotes de quartos:', error);
     throw new Error('Falha ao buscar pacotes de quartos.');
   }
-  return data;
+  return { data: data || [], total: count || 0 };
 }
 
 /**
@@ -48,7 +56,7 @@ export async function getTodosPacoteQuartos(): Promise<PacoteQuarto[]> {
  * @returns A entrada PacoteQuarto encontrada ou null.
  */
 export async function getPacoteQuartoById(id: string): Promise<PacoteQuarto | null> {
-  const supabase = await createClient();
+  const supabase = await createSupabaseAdmin();
   const { data, error } = await supabase
     .from('pacote_quartos')
     .select(`
@@ -73,7 +81,7 @@ export async function getPacoteQuartoById(id: string): Promise<PacoteQuarto | nu
  * @returns A entrada PacoteQuarto criada ou atualizada.
  */
 export async function upsertPacoteQuarto(pacoteQuarto: Partial<PacoteQuarto>): Promise<PacoteQuarto> {
-  const supabase = await createClient();
+  const supabase = await createSupabaseAdmin();
   const { data, error } = await supabase
     .from('pacote_quartos')
     .upsert(pacoteQuarto)
@@ -96,7 +104,7 @@ export async function upsertPacoteQuarto(pacoteQuarto: Partial<PacoteQuarto>): P
  * @param id O ID da entrada pacote_quartos a ser deletada.
  */
 export async function deletePacoteQuarto(id: string): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await createSupabaseAdmin();
   const { error } = await supabase
     .from('pacote_quartos')
     .delete()

@@ -31,7 +31,7 @@ import { Usuario } from "@/lib/types"
 // Schema de validação com Zod
 const profileFormSchema = z.object({
   nome: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
-  telefone: z.string().optional(),
+  telefone: z.string().regex(/^[\d\+\-\(\)\s]{10,20}$/, 'Telefone inválido').optional().or(z.literal('')),
   nacionalidade: z.string().min(2, { message: "Selecione sua nacionalidade." }),
   documento_tipo: z.enum(["cpf", "passaporte"]),
   cpf: z.string().optional(),
@@ -91,7 +91,7 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
           .from('usuarios')
           .select('*')
           .eq('id', user.id)
-          .single<Usuario>();
+          .single();
 
         if (profile) {
           form.reset({

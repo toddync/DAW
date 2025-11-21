@@ -29,14 +29,14 @@ const formSchema = z.object({
   capacidade: z.coerce.number().int().positive("A capacidade deve ser um número positivo."),
   preco_base: z.coerce.number().positive("O preço deve ser um número positivo."),
   ativo: z.boolean().default(true),
-  images: z.string().optional().transform(val => val ? val.split(',').map(s => s.trim()) : []),
+  images: z.string().optional(), // Mantém como string no formulário
 })
 
 type RoomFormValues = z.infer<typeof formSchema>
 
 interface RoomFormProps {
   initialData?: Partial<Quarto>;
-  onSubmit: (values: RoomFormValues) => void;
+  onSubmit: (values: any) => void; // Aceita qualquer coisa pois vamos transformar
   isSubmitting: boolean;
 }
 
@@ -44,15 +44,28 @@ export function RoomForm({ initialData, onSubmit, isSubmitting }: RoomFormProps)
   const form = useForm<RoomFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      ...initialData,
-      // Transforma o array de imagens em uma string para o input
+      numero: initialData?.numero || '',
+      descricao: initialData?.descricao || '',
+      tipo_quarto: (initialData?.tipo_quarto as "4_vagas" | "8_vagas" | "12_vagas") || '4_vagas',
+      capacidade: initialData?.capacidade || 0,
+      preco_base: initialData?.preco_base || 0,
+      ativo: initialData?.ativo !== undefined ? initialData?.ativo : true,
       images: initialData?.images?.join(', ') || '',
-    } || {},
+    },
   })
+
+  const handleSubmit = (values: RoomFormValues) => {
+    // Transforma a string de imagens em array antes de enviar
+    const formattedValues = {
+      ...values,
+      images: values.images ? values.images.split(',').map(s => s.trim()).filter(Boolean) : [],
+    };
+    onSubmit(formattedValues);
+  };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="numero"

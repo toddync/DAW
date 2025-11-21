@@ -30,30 +30,30 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
 
-  // Proteger rotas de admin
-  if (pathname.startsWith('/admin')) {
-    if (!user) {
+  // Early return if no user and not on protected routes
+  if (!user) {
+    if (pathname.startsWith('/admin')) {
       return NextResponse.redirect(new URL('/login?message=Authentication required', request.url));
     }
-    const { data: profile } = await supabase
-      .from('usuarios')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    return response;
+  }
 
+  // Single query to fetch user profile (role and nome) - OPTIMIZATION: Reduced from 2-3 queries to 1
+  const { data: profile } = await supabase
+    .from('usuarios')
+    .select('role, nome')
+    .eq('id', user.id)
+    .single();
+
+  // Proteger rotas de admin
+  if (pathname.startsWith('/admin')) {
     if (profile?.role !== 'admin') {
       return NextResponse.redirect(new URL('/', request.url));
     }
   }
 
   // Lógica de Onboarding para novos usuários
-  if (user && !pathname.startsWith('/account/onboarding') && !pathname.startsWith('/login')) {
-    const { data: profile } = await supabase
-      .from('usuarios')
-      .select('nome')
-      .eq('id', user.id)
-      .single();
-
+  if (!pathname.startsWith('/account/onboarding') && !pathname.startsWith('/login')) {
     // Se o perfil não tiver nome, redireciona para o onboarding
     if (profile && (profile.nome === null || profile.nome === '')) {
       return NextResponse.redirect(new URL('/account/onboarding', request.url));

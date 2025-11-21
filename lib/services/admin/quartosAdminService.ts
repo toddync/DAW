@@ -1,6 +1,6 @@
 // lib/services/admin/quartosAdminService.ts
 
-import { createClient } from "@/lib/supabase-server";
+import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { Quarto } from "@/lib/types";
 
 /**
@@ -8,19 +8,27 @@ import { Quarto } from "@/lib/types";
  * Não filtra por 'ativo' para permitir que o admin veja todos os quartos.
  * @returns Uma promessa que resolve para um array de todos os quartos.
  */
-export async function getTodosQuartos(): Promise<Quarto[]> {
-    const supabase = await createClient();
-    const { data, error } = await supabase
+export async function getTodosQuartos(
+    page: number = 1,
+    limit: number = 20
+): Promise<{ data: Quarto[], total: number }> {
+    const supabase = await createSupabaseAdmin();
+    
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    const { data, error, count } = await supabase
         .from('quartos')
-        .select('*')
-        .order('numero');
+        .select('*', { count: 'exact' })
+        .order('numero')
+        .range(from, to);
 
     if (error) {
         console.error("Erro ao buscar todos os quartos (Admin):", error);
         throw new Error(error.message);
     }
 
-    return data;
+    return { data: data || [], total: count || 0 };
 }
 
 // Tipo para criação e atualização de quartos, omitindo campos gerenciados pelo DB
@@ -32,7 +40,7 @@ type UpsertQuartoData = Omit<Quarto, 'id' | 'created_at' | 'updated_at'>;
  * @returns O registro do quarto criado ou atualizado.
  */
 export async function upsertQuarto(quartoData: Partial<UpsertQuartoData> & { id?: string }): Promise<Quarto> {
-    const supabase = await createClient();
+    const supabase = await createSupabaseAdmin();
     
     const { data, error } = await supabase
         .from('quartos')
@@ -53,7 +61,7 @@ export async function upsertQuarto(quartoData: Partial<UpsertQuartoData> & { id?
  * @param quartoId - O ID do quarto a ser deletado.
  */
 export async function deleteQuarto(quartoId: string): Promise<void> {
-    const supabase = await createClient();
+    const supabase = await createSupabaseAdmin();
     
     const { error } = await supabase
         .from('quartos')

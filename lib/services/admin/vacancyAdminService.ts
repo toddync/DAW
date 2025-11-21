@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase-server";
+import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { ControleOcupacao } from "@/lib/types";
 
 export async function getOcupacaoPorPeriodo(inicio: Date, fim: Date): Promise<ControleOcupacao[]> {
-    const supabase = await createClient();
+    const supabase = await createSupabaseAdmin();
     const { data, error } = await supabase
         .from('controle_ocupacao')
         .select(`
@@ -28,7 +28,7 @@ export async function getOcupacaoPorPeriodo(inicio: Date, fim: Date): Promise<Co
 
 export async function gerarRelatorioOcupacao(dataReferencia: Date) {
     // Placeholder for more complex logic if needed, e.g., aggregating by room type
-    const supabase = await createClient();
+    const supabase = await createSupabaseAdmin();
     const { data, error } = await supabase
         .rpc('calcular_ocupacao_diaria', { data_calc: dataReferencia }); // Assuming a stored procedure exists or we implement logic here
 

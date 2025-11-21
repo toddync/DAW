@@ -1,16 +1,24 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Quarto } from "@/lib/types"
 import { getColumns } from "./columns"
 import { DataTable } from "@/components/ui/data-table"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { PlusCircle, Loader2 } from "lucide-react"
+import { PlusCircle, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import { RoomForm } from "./room-form"
 import { useToast } from "@/components/ui/use-toast"
+
+interface PaginatedResponse {
+  data: Quarto[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
 
 export default function RoomsAdminPage() {
   const [quartos, setQuartos] = useState<Quarto[]>([])
@@ -20,25 +28,36 @@ export default function RoomsAdminPage() {
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
   const [selectedQuarto, setSelectedQuarto] = useState<Partial<Quarto> | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  
   const { toast } = useToast()
 
-  const fetchQuartos = async () => {
+  const fetchQuartos = useCallback(async (currentPage: number = 1) => {
     try {
       setLoading(true)
-      const response = await fetch("/api/admin/quartos")
+      const response = await fetch(`/api/admin/quartos?page=${currentPage}&limit=20`, { cache: 'no-store' })
       if (!response.ok) throw new Error("Falha ao carregar os quartos.")
-      const data = await response.json()
-      setQuartos(data)
+      
+      const data: PaginatedResponse = await response.json()
+      
+      setQuartos(data.data)
+      setPage(data.page)
+      setTotalPages(data.totalPages)
+      setTotal(data.total)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ocorreu um erro.")
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    fetchQuartos()
-  }, [])
+    fetchQuartos(page)
+  }, [page, fetchQuartos])
 
   const handleCreate = () => {
     setSelectedQuarto(null)
@@ -62,7 +81,7 @@ export default function RoomsAdminPage() {
       const response = await fetch(`/api/admin/quartos/${selectedQuarto.id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error("Falha ao deletar o quarto.");
       toast({ title: "Sucesso", description: "Quarto deletado." });
-      await fetchQuartos();
+      await fetchQuartos(page);
     } catch (err) {
       toast({ variant: "destructive", title: "Erro", description: err instanceof Error ? err.message : "Ocorreu um erro." });
     } finally {
@@ -86,7 +105,7 @@ export default function RoomsAdminPage() {
       if (!response.ok) throw new Error(`Falha ao ${isEditing ? 'atualizar' : 'criar'} o quarto.`);
       toast({ title: "Sucesso", description: `Quarto ${isEditing ? 'atualizado' : 'criado'}.` });
       setIsFormOpen(false);
-      await fetchQuartos();
+      await fetchQuartos(page);
     } catch (err) {
       toast({ variant: "destructive", title: "Erro", description: err instanceof Error ? err.message : "Ocorreu um erro." });
     } finally {
@@ -117,7 +136,38 @@ export default function RoomsAdminPage() {
           ) : error ? (
             <p className="text-destructive text-center">{error}</p>
           ) : (
-            <DataTable columns={columns} data={quartos} />
+            <>
+              <DataTable columns={columns} data={quartos} />
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando {quartos.length} de {total} registros (Página {page} de {totalPages})
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                    >
+                      Próxima
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

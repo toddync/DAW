@@ -62,6 +62,9 @@ export default function CheckoutPage() {
   }, [supabase, router, fetchCart]);
 
   const total = cart.reduce((acc, item) => {
+    if (item.preco_fixo !== undefined) {
+      return acc + item.preco_fixo;
+    }
     const nights = calculateDays(item.data_inicio, item.data_fim);
     const pricePerNight = item.vaga.quarto.preco_base / item.vaga.quarto.capacidade;
     return acc + (pricePerNight * nights);
@@ -71,12 +74,23 @@ export default function CheckoutPage() {
     setIsBooking(true);
     try {
       const payload = {
-        vagas: cart.map(item => ({
-          vaga_id: item.vaga.id,
-          data_inicio: item.data_inicio,
-          data_fim: item.data_fim,
-          preco: (item.vaga.quarto.preco_base / item.vaga.quarto.capacidade) * calculateDays(item.data_inicio, item.data_fim),
-        })),
+        vagas: cart.map(item => {
+          let preco;
+          if (item.preco_fixo !== undefined) {
+            preco = item.preco_fixo;
+          } else {
+            const nights = calculateDays(item.data_inicio, item.data_fim);
+            preco = (item.vaga.quarto.preco_base / item.vaga.quarto.capacidade) * nights;
+          }
+          
+          return {
+            vaga_id: item.vaga.id,
+            data_inicio: item.data_inicio,
+            data_fim: item.data_fim,
+            preco: preco,
+            pacote_quarto_id: item.pacote_quarto_id || null // Passando null se não existir para manter a chave no JSON
+          };
+        }),
         valorTotal: total,
       };
 
@@ -144,8 +158,14 @@ export default function CheckoutPage() {
             <h3 className="font-semibold">Itens da Reserva</h3>
             {cart.map(item => {
               const nights = calculateDays(item.data_inicio, item.data_fim);
-              const pricePerNight = item.vaga.quarto.preco_base / item.vaga.quarto.capacidade;
-              const itemTotal = pricePerNight * nights;
+              let itemTotal;
+              
+              if (item.preco_fixo !== undefined) {
+                itemTotal = item.preco_fixo;
+              } else {
+                const pricePerNight = item.vaga.quarto.preco_base / item.vaga.quarto.capacidade;
+                itemTotal = pricePerNight * nights;
+              }
 
               return (
                 <div key={item.id} className="flex justify-between items-center p-3 border rounded-lg">

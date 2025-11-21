@@ -1,36 +1,56 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Pagamento } from "@/lib/types"
 import { getColumns } from "./columns"
 import { DataTable } from "@/components/ui/data-table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { Button } from "@/components/ui/button"
+
+interface PaginatedResponse {
+  data: Pagamento[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
 
 export default function PaymentsAdminPage() {
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  
   const { toast } = useToast()
 
-  const fetchPagamentos = async () => {
+  const fetchPagamentos = useCallback(async (currentPage: number = 1) => {
     try {
       setLoading(true)
-      const response = await fetch("/api/admin/payments")
+      const response = await fetch(`/api/admin/payments?page=${currentPage}&limit=20`, { cache: 'no-store' })
       if (!response.ok) throw new Error("Falha ao carregar os pagamentos.")
-      const data = await response.json()
-      setPagamentos(data)
+      
+      const data: PaginatedResponse = await response.json()
+      
+      setPagamentos(data.data)
+      setPage(data.page)
+      setTotalPages(data.totalPages)
+      setTotal(data.total)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ocorreu um erro.")
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    fetchPagamentos()
-  }, [])
+    fetchPagamentos(page)
+  }, [page, fetchPagamentos])
 
   const handleUpdateStatus = async (pagamento: Pagamento, newStatus: string) => {
     try {
@@ -41,7 +61,7 @@ export default function PaymentsAdminPage() {
       });
       if (!response.ok) throw new Error("Falha ao atualizar o status do pagamento.");
       toast({ title: "Sucesso", description: `Status atualizado para ${newStatus}.` });
-      await fetchPagamentos();
+      await fetchPagamentos(page);
     } catch (err) {
       toast({ variant: "destructive", title: "Erro", description: err instanceof Error ? err.message : "Ocorreu um erro." });
     }
@@ -63,7 +83,38 @@ export default function PaymentsAdminPage() {
         ) : error ? (
           <p className="text-destructive text-center">{error}</p>
         ) : (
-          <DataTable columns={columns} data={pagamentos} />
+          <>
+            <DataTable columns={columns} data={pagamentos} />
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Mostrando {pagamentos.length} de {total} registros (Página {page} de {totalPages})
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Anterior
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                  >
+                    Próxima
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
