@@ -102,6 +102,8 @@ export interface CarrinhoItem {
   data_inicio: string;
   data_fim: string;
   created_at: string;
+  pacote_quarto_id?: string;
+  preco_fixo?: number;
   // Objeto aninhado retornado pela API
   vaga?: Vaga & { quarto?: Quarto };
 }

@@ -91,7 +91,7 @@ export function ProfileForm({ onSuccess }: ProfileFormProps) {
           .from('usuarios')
           .select('*')
           .eq('id', user.id)
-          .single<Usuario>();
+          .single();
 
         if (profile) {
           form.reset({

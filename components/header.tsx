@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import { User as SupabaseUser } from '@supabase/supabase-js'
+import { User as SupabaseUser, AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -38,12 +38,12 @@ export function Header() {
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event: AuthChangeEvent, session: Session | null) => {
         setUser(session?.user || null)
       }
     )
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: { data: { user: SupabaseUser | null } }) => {
       setUser(user)
     })
 

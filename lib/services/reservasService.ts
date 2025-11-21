@@ -8,6 +8,7 @@ interface VagaParaReserva {
   data_inicio: string;
   data_fim: string;
   preco: number;
+  pacote_quarto_id?: string;
 }
 
 /**
@@ -24,6 +25,7 @@ export async function createReserva(
 ): Promise<string> {
   const supabase = await createClient();
   
+  console.log('createReserva: Fetching cancellation policy...');
   // Busca a política de cancelamento padrão. Em um app real, isso poderia ser mais dinâmico.
   const { data: politica, error: politicaError } = await supabase
     .from('politicas_cancelamento')
@@ -32,22 +34,33 @@ export async function createReserva(
     .single();
 
   if (politicaError || !politica) {
+    console.error('createReserva: Policy not found error:', politicaError);
     throw new Error('Política de cancelamento padrão não encontrada.');
   }
 
-  const { data, error } = await supabase.rpc('criar_reserva_com_vagas', {
+  const rpcParams = {
     p_usuario_id: usuarioId,
     p_politica_id: politica.id,
     p_vagas: vagas,
     p_valor_total: valorTotal,
     p_termos_aceitos: true // Assumindo que os termos foram aceitos no frontend
-  });
+  };
+
+  console.log('createReserva: Calling RPC criar_reserva_com_vagas with params:', JSON.stringify(rpcParams, null, 2));
+
+  const { data, error } = await supabase.rpc('criar_reserva_com_vagas', rpcParams);
 
   if (error) {
-    console.error('Erro ao criar reserva via RPC:', error);
-    throw new Error(`Falha ao criar reserva: ${error.message}`);
+    console.error('createReserva: RPC Error:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    });
+    throw new Error(`Falha ao criar reserva: ${error.message} (Code: ${error.code})`);
   }
 
+  console.log('createReserva: Success! Reservation ID:', data);
   return data; // Retorna o UUID da reserva criada
 }
 

@@ -14,8 +14,13 @@ export async function getItensCarrinho(usuarioId: string): Promise<CarrinhoItem[
         .from('carrinho_itens')
         .select(`
             id,
+            usuario_id,
+            vaga_id,
             data_inicio,
             data_fim,
+            created_at,
+            pacote_quarto_id,
+            preco_fixo,
             vaga:vagas (
                 *,
                 quarto:quartos (
@@ -30,7 +35,8 @@ export async function getItensCarrinho(usuarioId: string): Promise<CarrinhoItem[
         throw new Error(error.message);
     }
 
-    return data as CarrinhoItem[];
+    // Supabase returns single relation as object or array depending on query, forcing cast here
+    return data as unknown as CarrinhoItem[];
 }
 
 interface ItemParaAdicionar {

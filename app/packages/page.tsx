@@ -94,7 +94,7 @@ export default async function PackagesPage() {
                                 </div>
                             </CardContent>
                             <CardFooter>
-                                <AddPackageToCartButton
+                                <AddPackageToCartButton 
                                     pacoteQuartoId={pacote.id}
                                     dataInicio={pacote.data_inicio}
                                     dataFim={pacote.data_fim}
