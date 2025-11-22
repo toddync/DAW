@@ -4,10 +4,11 @@ import { getPacoteQuartoById } from '@/lib/services/admin/pacotesAdminService';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     // Try to get ID from params first, then fallback to URL parsing if needed
-    let id = params.id;
+    const { id: paramId } = await params;
+    let id = paramId;
 
     // WORKAROUND: If params.id is missing or invalid (e.g. literal '[id]'), try parsing from URL
     if (!id || id === '[id]') {

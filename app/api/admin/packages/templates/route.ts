@@ -1,7 +1,7 @@
 // app/api/admin/packages/templates/route.ts
 import { createClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
-import { getTodosPacotesTemplates } from '@/lib/services/admin/pacotesAdminService';
+import { getTodosPacotesTemplates, upsertPacote } from '@/lib/services/admin/pacotesAdminService';
 import { getUsuarioById } from '@/lib/services/usuariosService';
 
 /**
@@ -37,5 +37,28 @@ export async function GET(request: NextRequest) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
         console.error(`API Error in GET /api/admin/packages/templates: ${errorMessage}`);
         return NextResponse.json({ error: 'Falha ao buscar templates de pacotes.', details: errorMessage }, { status: 500 });
+    }
+}
+
+/**
+ * API endpoint para criar um novo template de pacote (Admin).
+ */
+export async function POST(request: NextRequest) {
+    const { error } = await isAdmin(request);
+    if (error) return error;
+
+    try {
+        const body = await request.json();
+        // Validação básica
+        if (!body.nome) {
+            return NextResponse.json({ error: 'O nome do pacote é obrigatório.' }, { status: 400 });
+        }
+
+        const novoPacote = await upsertPacote(body);
+        return NextResponse.json(novoPacote, { status: 201 });
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+        console.error(`API Error in POST /api/admin/packages/templates: ${errorMessage}`);
+        return NextResponse.json({ error: 'Falha ao criar template de pacote.', details: errorMessage }, { status: 500 });
     }
 }

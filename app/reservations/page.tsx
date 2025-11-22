@@ -1,3 +1,4 @@
+// app/reservations/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -6,7 +7,7 @@ import { getSupabaseClient } from '@/lib/supabase-client'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, BedDouble, Calendar, Home, Loader2, Star } from 'lucide-react'
+import { AlertCircle, BedDouble, Calendar, Home, Loader2, Star, Package } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
@@ -43,6 +44,7 @@ interface ReservaDetalhada {
   status: string;
   avaliacoes: { id: string }[];
   reserva_vagas: {
+    pacote_quarto_id?: string;
     vaga: {
       id: string;
       numero_vaga: number;
@@ -52,6 +54,13 @@ interface ReservaDetalhada {
         numero: string;
         descricao: string | null;
         images: string[] | null;
+      };
+    };
+    pacote_quarto?: {
+      id: string;
+      pacote: {
+        nome: string;
+        descricao?: string | null;
       };
     };
   }[];
@@ -99,9 +108,8 @@ function ReviewDialog({ reservaId, onReviewSubmit }: { reservaId: string, onRevi
             {[1, 2, 3, 4, 5].map((star) => (
               <Star
                 key={star}
-                className={`cursor-pointer h-7 w-7 ${
-                  (hoverRating || rating) >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
-                }`}
+                className={`cursor-pointer h-7 w-7 ${(hoverRating || rating) >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
+                  }`}
                 onMouseEnter={() => setHoverRating(star)}
                 onMouseLeave={() => setHoverRating(0)}
                 onClick={() => setRating(star)}
@@ -223,23 +231,48 @@ export default function ReservationsPage() {
           {activeReservations.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {activeReservations.map((res) => {
-                const quarto = res.reserva_vagas[0]?.vaga.quarto;
-                const vaga = res.reserva_vagas[0]?.vaga;
-                if (!quarto || !vaga) return null;
+                const firstItem = res.reserva_vagas[0];
+                const isPackage = !!firstItem.pacote_quarto_id;
+                const pacote = firstItem.pacote_quarto?.pacote;
+                const quarto = firstItem.vaga.quarto;
+
                 const isCancellable = res.status === 'confirmada' || res.status === 'pendente';
 
                 return (
                   <Card key={res.id} className="flex flex-col">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Home className="w-5 h-5 text-primary" />
-                        Quarto Nº {quarto.numero}
+                        {isPackage ? (
+                          <>
+                            <Package className="w-5 h-5 text-primary" />
+                            {pacote?.nome || 'Pacote'}
+                          </>
+                        ) : (
+                          <>
+                            <Home className="w-5 h-5 text-primary" />
+                            Quarto Nº {quarto.numero}
+                          </>
+                        )}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3 flex-grow">
+                      {isPackage && pacote?.descricao && (
+                        <p className="text-sm text-muted-foreground">{pacote.descricao}</p>
+                      )}
+
+                      <div className="flex items-center gap-2 text-sm">
+                        <Home className="w-4 h-4 text-muted-foreground" />
+                        <span>Quarto Nº {quarto.numero}</span>
+                      </div>
+
                       <div className="flex items-center gap-2 text-sm">
                         <BedDouble className="w-4 h-4 text-muted-foreground" />
-                        <span>Vaga {vaga.numero_vaga} ({vaga.tipo_cama})</span>
+                        <span>
+                          {isPackage
+                            ? `${res.reserva_vagas.length} vaga(s) reservada(s)`
+                            : `Vaga ${firstItem.vaga.numero_vaga} (${firstItem.vaga.tipo_cama})`
+                          }
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
@@ -290,9 +323,11 @@ export default function ReservationsPage() {
           {pastReservations.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {pastReservations.map((res) => {
-                const quarto = res.reserva_vagas[0]?.vaga.quarto;
-                const vaga = res.reserva_vagas[0]?.vaga;
-                if (!quarto || !vaga) return null;
+                const firstItem = res.reserva_vagas[0];
+                const isPackage = !!firstItem.pacote_quarto_id;
+                const pacote = firstItem.pacote_quarto?.pacote;
+                const quarto = firstItem.vaga.quarto;
+
                 const canReview = res.status === 'checkout' && res.avaliacoes.length === 0;
 
                 return (
@@ -300,14 +335,32 @@ export default function ReservationsPage() {
                     <Card className="opacity-70 flex flex-col">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          <Home className="w-5 h-5" />
-                          Quarto Nº {quarto.numero}
+                          {isPackage ? (
+                            <>
+                              <Package className="w-5 h-5" />
+                              {pacote?.nome || 'Pacote'}
+                            </>
+                          ) : (
+                            <>
+                              <Home className="w-5 h-5" />
+                              Quarto Nº {quarto.numero}
+                            </>
+                          )}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3 flex-grow">
                         <div className="flex items-center gap-2 text-sm">
+                          <Home className="w-4 h-4 text-muted-foreground" />
+                          <span>Quarto Nº {quarto.numero}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
                           <BedDouble className="w-4 h-4 text-muted-foreground" />
-                          <span>Vaga {vaga.numero_vaga}</span>
+                          <span>
+                            {isPackage
+                              ? `${res.reserva_vagas.length} vaga(s)`
+                              : `Vaga ${firstItem.vaga.numero_vaga}`
+                            }
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <Calendar className="w-4 h-4 text-muted-foreground" />

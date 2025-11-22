@@ -32,7 +32,7 @@ export function Header() {
   const pathname = usePathname()
   const router = useRouter()
   const isBooking = pathname === '/booking'
-  
+
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const supabase = getSupabaseClient()
 
@@ -59,70 +59,77 @@ export function Header() {
   }
 
   return (
-    <header className={"border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-50 " + (pathname.includes('/admin') ? 'hidden' : '')}>
+    <header className={"border-b border-border/40 bg-background/70 backdrop-blur-md sticky top-0 z-50 transition-all duration-300 " + (pathname.includes('/admin') ? 'hidden' : '')}>
       <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold">H</span>
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-all duration-300">
+            <span className="text-primary-foreground font-bold text-xl">H</span>
           </div>
-          <span className="font-bold text-lg text-foreground">Hostel Santa Teresa</span>
+          <span className="font-bold text-xl text-foreground tracking-tight group-hover:text-primary transition-colors">Hostel Santa Teresa</span>
         </Link>
 
-        <nav className="flex items-center gap-4 md:gap-6">
+        <nav className="flex items-center gap-6 md:gap-8">
           <Link
             href="/booking"
-            className={`text-sm font-medium transition-colors ${isBooking ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`text-sm font-medium transition-all hover:-translate-y-0.5 ${isBooking ? 'text-primary font-semibold' : 'text-muted-foreground hover:text-primary'}`}
           >
             Quartos
           </Link>
           <Link
             href="/packages"
-            className={`text-sm font-medium transition-colors ${pathname === '/packages' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`text-sm font-medium transition-all hover:-translate-y-0.5 ${pathname === '/packages' ? 'text-primary font-semibold' : 'text-muted-foreground hover:text-primary'}`}
           >
             Pacotes
           </Link>
-          
+
           <CartSidebar />
 
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="rounded-full">
+                <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10 hover:text-primary transition-colors">
                   <UserIcon className="h-5 w-5" />
                   <span className="sr-only">Abrir menu do usuário</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-56 p-2">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">Minha Conta</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild className="cursor-pointer">
                   <Link href="/reservations">
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     <span>Minhas Reservas</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild className="cursor-pointer">
                   <Link href="/account/profile">
                     <UserIcon className="mr-2 h-4 w-4" />
                     <span>Perfil</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
+                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Sair</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Link href="/login">
-                <Button variant="outline" size="sm">
+                <Button variant="ghost" size="sm" className="font-medium hover:text-primary hover:bg-primary/5">
                   Entrar
                 </Button>
               </Link>
               <Link href="/signup">
-                <Button size="sm">
+                <Button size="sm" className="font-medium shadow-md shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5">
                   Cadastrar
                 </Button>
               </Link>

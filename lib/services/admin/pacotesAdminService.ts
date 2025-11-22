@@ -21,6 +21,44 @@ export async function getTodosPacotesTemplates(): Promise<Pacote[]> {
 }
 
 /**
+ * Cria ou atualiza um pacote (template).
+ * Se o pacote tiver um ID, ele será atualizado; caso contrário, um novo será criado.
+ * @param pacote Os dados do pacote a serem criados ou atualizados.
+ * @returns O pacote criado ou atualizado.
+ */
+export async function upsertPacote(pacote: Partial<Pacote>): Promise<Pacote> {
+  const supabase = await createSupabaseAdmin();
+  const { data, error } = await supabase
+    .from('pacotes')
+    .upsert(pacote)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erro ao salvar template de pacote:', error);
+    throw new Error('Falha ao salvar template de pacote.');
+  }
+  return data;
+}
+
+/**
+ * Deleta um pacote (template) pelo ID.
+ * @param id O ID do pacote a ser deletado.
+ */
+export async function deletePacote(id: string): Promise<void> {
+  const supabase = await createSupabaseAdmin();
+  const { error } = await supabase
+    .from('pacotes')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error(`Erro ao deletar template de pacote com ID ${id}:`, error);
+    throw new Error('Falha ao deletar template de pacote.');
+  }
+}
+
+/**
  * Busca todas as entradas de pacote_quartos do banco de dados, incluindo dados aninhados.
  * @returns Uma lista de PacoteQuarto.
  */
@@ -29,7 +67,7 @@ export async function getTodosPacoteQuartos(
   limit: number = 20
 ): Promise<{ data: PacoteQuarto[], total: number }> {
   const supabase = await createSupabaseAdmin();
-  
+
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 

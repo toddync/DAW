@@ -4,11 +4,11 @@ import { createClient } from "@/lib/supabase-server";
 import { Reserva } from "@/lib/types";
 
 interface VagaParaReserva {
-  vaga_id: string;
-  data_inicio: string;
-  data_fim: string;
-  preco: number;
-  pacote_quarto_id?: string;
+    vaga_id: string;
+    data_inicio: string;
+    data_fim: string;
+    preco: number;
+    pacote_quarto_id?: string;
 }
 
 /**
@@ -19,49 +19,49 @@ interface VagaParaReserva {
  * @returns O ID da reserva criada.
  */
 export async function createReserva(
-  usuarioId: string,
-  vagas: VagaParaReserva[],
-  valorTotal: number
+    usuarioId: string,
+    vagas: VagaParaReserva[],
+    valorTotal: number
 ): Promise<string> {
-  const supabase = await createClient();
-  
-  console.log('createReserva: Fetching cancellation policy...');
-  // Busca a política de cancelamento padrão. Em um app real, isso poderia ser mais dinâmico.
-  const { data: politica, error: politicaError } = await supabase
-    .from('politicas_cancelamento')
-    .select('id')
-    .eq('nome', 'Política Flexível')
-    .single();
+    const supabase = await createClient();
 
-  if (politicaError || !politica) {
-    console.error('createReserva: Policy not found error:', politicaError);
-    throw new Error('Política de cancelamento padrão não encontrada.');
-  }
+    console.log('createReserva: Fetching cancellation policy...');
+    // Busca a política de cancelamento padrão. Em um app real, isso poderia ser mais dinâmico.
+    const { data: politica, error: politicaError } = await supabase
+        .from('politicas_cancelamento')
+        .select('id')
+        .eq('nome', 'Política Flexível')
+        .single();
 
-  const rpcParams = {
-    p_usuario_id: usuarioId,
-    p_politica_id: politica.id,
-    p_vagas: vagas,
-    p_valor_total: valorTotal,
-    p_termos_aceitos: true // Assumindo que os termos foram aceitos no frontend
-  };
+    if (politicaError || !politica) {
+        console.error('createReserva: Policy not found error:', politicaError);
+        throw new Error('Política de cancelamento padrão não encontrada.');
+    }
 
-  console.log('createReserva: Calling RPC criar_reserva_com_vagas with params:', JSON.stringify(rpcParams, null, 2));
+    const rpcParams = {
+        p_usuario_id: usuarioId,
+        p_politica_id: politica.id,
+        p_vagas: vagas,
+        p_valor_total: valorTotal,
+        p_termos_aceitos: true // Assumindo que os termos foram aceitos no frontend
+    };
 
-  const { data, error } = await supabase.rpc('criar_reserva_com_vagas', rpcParams);
+    console.log('createReserva: Calling RPC criar_reserva_com_vagas with params:', JSON.stringify(rpcParams, null, 2));
 
-  if (error) {
-    console.error('createReserva: RPC Error:', {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code
-    });
-    throw new Error(`Falha ao criar reserva: ${error.message} (Code: ${error.code})`);
-  }
+    const { data, error } = await supabase.rpc('criar_reserva_com_vagas', rpcParams);
 
-  console.log('createReserva: Success! Reservation ID:', data);
-  return data; // Retorna o UUID da reserva criada
+    if (error) {
+        console.error('createReserva: RPC Error:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+        });
+        throw new Error(`Falha ao criar reserva: ${error.message} (Code: ${error.code})`);
+    }
+
+    console.log('createReserva: Success! Reservation ID:', data);
+    return data; // Retorna o UUID da reserva criada
 }
 
 /**
@@ -82,6 +82,7 @@ export async function getReservasByUsuarioId(usuarioId: string): Promise<any[]> 
             status,
             avaliacoes ( id ),
             reserva_vagas (
+                pacote_quarto_id,
                 vaga:vagas (
                     id,
                     numero_vaga,
@@ -91,6 +92,13 @@ export async function getReservasByUsuarioId(usuarioId: string): Promise<any[]> 
                         numero,
                         descricao,
                         images
+                    )
+                ),
+                pacote_quarto:pacote_quartos (
+                    id,
+                    pacote:pacotes (
+                        nome,
+                        descricao
                     )
                 )
             )

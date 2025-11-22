@@ -3,9 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  let id = params.id;
+  const { id: paramId } = await params;
+  let id = paramId;
 
   // Fallback if params.id is not correctly populated
   if (!id || id === '[id]') {

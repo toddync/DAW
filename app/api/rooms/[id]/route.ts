@@ -7,7 +7,7 @@ import { getQuartoById } from '@/lib/services/quartosService';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   // WORKAROUND for Next.js bug where params are not correctly passed in some dynamic contexts.
   // Extract the ID directly from the URL path.
@@ -38,14 +38,14 @@ export async function GET(
       code: error.code,
       details: error.details,
     });
-    
+
     const status = typeof error.status === 'number' ? error.status : 500;
 
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch room data.',
-        details: errorMessage 
-      }, 
+        details: errorMessage
+      },
       { status: status }
     );
   }

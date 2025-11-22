@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import { User } from '@supabase/supabase-js'
+import { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 import {
   Sheet,
   SheetContent,
@@ -34,7 +34,7 @@ export function CartSidebar() {
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (event: AuthChangeEvent, session: Session | null) => {
         const newUser = session?.user ?? null;
         setUser(newUser);
 
@@ -103,9 +103,9 @@ export function CartSidebar() {
                   const nights =
                     item.data_inicio && item.data_fim
                       ? calculateNights(
-                          item.data_inicio,
-                          item.data_fim
-                        )
+                        item.data_inicio,
+                        item.data_fim
+                      )
                       : 0
                   const pricePerNight = item.vaga.quarto.preco_base / item.vaga.quarto.capacidade
                   const itemTotal = nights * pricePerNight

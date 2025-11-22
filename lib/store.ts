@@ -176,7 +176,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
 
       await get().fetchCart();
     } catch (error) {
-      console.error("addPackageToCart error:", error);
+      // Erro já tratado ou repassado para o componente
       throw error;
     }
   },

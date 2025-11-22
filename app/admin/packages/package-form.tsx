@@ -71,14 +71,16 @@ export function PackageForm({ initialData, onSubmit, isSubmitting }: PackageForm
       try {
         const [pacotesRes, quartosRes] = await Promise.all([
           fetch("/api/admin/packages/templates"), // Nova API para templates de pacotes
-          fetch("/api/admin/quartos") // API existente para quartos
+          fetch("/api/admin/quartos?limit=100") // API existente para quartos, aumentando o limite para trazer todos
         ]);
 
         if (!pacotesRes.ok) throw new Error("Falha ao carregar templates de pacotes.");
         if (!quartosRes.ok) throw new Error("Falha ao carregar quartos.");
 
         const pacotesData: Pacote[] = await pacotesRes.json();
-        const quartosData: Quarto[] = await quartosRes.json();
+        const quartosResponse = await quartosRes.json();
+        // A API de quartos retorna um objeto paginado { data: [], ... }
+        const quartosData: Quarto[] = quartosResponse.data || [];
 
         setPacotesTemplates(pacotesData);
         setQuartos(quartosData);

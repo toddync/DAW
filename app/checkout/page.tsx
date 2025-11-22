@@ -25,7 +25,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { toast } = useToast();
   const supabase = getSupabaseClient();
-  
+
   const { cart, fetchCart, clearCart } = useBookingStore();
   const [termos, setTermos] = useState({ texto: '', versao: '' });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -44,7 +44,7 @@ export default function CheckoutPage() {
       try {
         setLoading(true);
         await fetchCart();
-        
+
         const termsResponse = await fetch('/api/terms');
         if (termsResponse.ok) {
           const termsData = await termsResponse.json();
@@ -62,7 +62,7 @@ export default function CheckoutPage() {
   }, [supabase, router, fetchCart]);
 
   const total = cart.reduce((acc, item) => {
-    if (item.preco_fixo !== undefined) {
+    if (item.preco_fixo != null) {
       return acc + item.preco_fixo;
     }
     const nights = calculateDays(item.data_inicio, item.data_fim);
@@ -76,13 +76,13 @@ export default function CheckoutPage() {
       const payload = {
         vagas: cart.map(item => {
           let preco;
-          if (item.preco_fixo !== undefined) {
+          if (item.preco_fixo != null) {
             preco = item.preco_fixo;
           } else {
             const nights = calculateDays(item.data_inicio, item.data_fim);
             preco = (item.vaga.quarto.preco_base / item.vaga.quarto.capacidade) * nights;
           }
-          
+
           return {
             vaga_id: item.vaga.id,
             data_inicio: item.data_inicio,
@@ -106,7 +106,7 @@ export default function CheckoutPage() {
       }
 
       const result = await response.json();
-      
+
       toast({
         title: 'Reserva Confirmada!',
         description: 'Sua reserva foi criada com sucesso.',
@@ -133,16 +133,16 @@ export default function CheckoutPage() {
   if (error) {
     return <div className="text-center py-10 text-destructive">{error}</div>;
   }
-  
+
   if (cart.length === 0 && !loading) {
     return (
-        <div className="text-center py-20">
-            <h2 className="text-2xl font-bold mb-4">Seu carrinho está vazio</h2>
-            <p className="text-muted-foreground mb-6">Adicione algumas vagas antes de prosseguir para o checkout.</p>
-            <Button asChild>
-                <Link href="/booking">Buscar Quartos</Link>
-            </Button>
-        </div>
+      <div className="text-center py-20">
+        <h2 className="text-2xl font-bold mb-4">Seu carrinho está vazio</h2>
+        <p className="text-muted-foreground mb-6">Adicione algumas vagas antes de prosseguir para o checkout.</p>
+        <Button asChild>
+          <Link href="/booking">Buscar Quartos</Link>
+        </Button>
+      </div>
     )
   }
 
@@ -159,8 +159,8 @@ export default function CheckoutPage() {
             {cart.map(item => {
               const nights = calculateDays(item.data_inicio, item.data_fim);
               let itemTotal;
-              
-              if (item.preco_fixo !== undefined) {
+
+              if (item.preco_fixo != null) {
                 itemTotal = item.preco_fixo;
               } else {
                 const pricePerNight = item.vaga.quarto.preco_base / item.vaga.quarto.capacidade;
@@ -196,10 +196,10 @@ export default function CheckoutPage() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button 
-            className="w-full" 
-            size="lg" 
-            onClick={handleBooking} 
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleBooking}
             disabled={!acceptedTerms || isBooking}
           >
             {isBooking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

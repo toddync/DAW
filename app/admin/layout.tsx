@@ -83,7 +83,15 @@ export default function AdminLayout({
               <Link href="/admin/packages">
                 <SidebarMenuButton>
                   <PackageIcon className="h-5 w-5" />
-                  Pacotes
+                  Pacotes de Quartos
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/admin/packages/templates">
+                <SidebarMenuButton>
+                  <PackageIcon className="h-5 w-5" />
+                  Templates de Pacotes
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
