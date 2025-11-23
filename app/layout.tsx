@@ -39,7 +39,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`font-sans antialiased`}>
-        <div className="min-h-screen bg-background">
+        <div className="h-svh w-svw bg-background">
           <Header />
           {children}
           <Toaster />

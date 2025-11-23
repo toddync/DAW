@@ -171,13 +171,13 @@ export default function BookingPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {filteredQuartos.map((quarto) => (
                   <Link href={`/rooms/${quarto.id}`} key={quarto.id}>
-                    <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer overflow-hidden group">
+                    <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer overflow-hidden group pt-0">
                       <div className="relative h-48 w-full bg-muted overflow-hidden">
                         <Image
                           src={quarto.images?.[0] || "/placeholder.svg"}
                           alt={`Foto do Quarto Nº ${quarto.numero}`}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="object-fill group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
 
@@ -226,7 +226,7 @@ export default function BookingPage() {
             )}
           </div>
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   )
 }

@@ -30,12 +30,16 @@ export default function AdminLayout({
     <SidebarProvider>
       <Sidebar variant="inset" collapsible="icon">
         <SidebarHeader>
-          <Link href="/admin">
-            <SidebarMenuButton>
-              <HomeIcon className="h-6 w-6" />
-              <span className="ml-2">Início Admin</span>
-            </SidebarMenuButton>
-          </Link>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <Link href="/admin">
+                <SidebarMenuButton>
+                  <HomeIcon className="h-6 w-6 -ml-2" />
+                  <span>Início Admin</span>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
@@ -47,7 +51,7 @@ export default function AdminLayout({
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
-            <SidebarMenuItem>
+            <SidebarMenuItem className="hidden">
               <Link href="/admin/payments">
                 <SidebarMenuButton>
                   <CreditCardIcon className="h-5 w-5" />
@@ -55,7 +59,7 @@ export default function AdminLayout({
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
-            <SidebarMenuItem>
+            <SidebarMenuItem className="hidden">
               <Link href="/admin/vacancy">
                 <SidebarMenuButton>
                   <CalendarIcon className="h-5 w-5" />

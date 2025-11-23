@@ -48,13 +48,16 @@ export default function HomePage() {
         {/* Background Image with Gradient Overlay */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/placeholder.svg?height=1080&width=1920"
+            src="/hostel.jpeg"
             alt="Hostel Santa Teresa Vibe"
             fill
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/40 to-background" />
+          <div className='absolute inset-0 bg-black/40 z-10  flex-1' />
+
+
+
         </div>
 
         <div className="relative z-10 max-w-5xl mx-auto px-4 text-center space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
@@ -64,7 +67,7 @@ export default function HomePage() {
           </div>
 
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold text-white tracking-tight text-balance drop-shadow-lg">
-            Sua Casa <span className="text-primary-foreground/90 italic">Longe de Casa</span>
+            Sua Casa <span className="text-primary-foreground/85 italic">Longe de Casa<span></span></span>
           </h1>
 
           <p className="text-xl md:text-2xl text-white/80 max-w-3xl mx-auto text-pretty font-light leading-relaxed drop-shadow-md">
